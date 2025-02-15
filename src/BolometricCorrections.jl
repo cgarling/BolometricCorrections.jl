@@ -10,6 +10,8 @@ using TypedTables: Table, columnnames
 include("YBC/YBC.jl")
 using .YBC
 # exports from YBC
-
+include("MIST/MIST.jl")
+using .MIST
+# exports from MIST
 
 end # module

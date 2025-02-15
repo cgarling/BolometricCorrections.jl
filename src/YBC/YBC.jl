@@ -1,7 +1,8 @@
 module YBC
 
 # import ..MIST: mist_function # relative path for a “sibling” module
-using ..BolometricCorrections: Table, columnnames # relative path for parent module
+# using ..BolometricCorrections: Table, columnnames # relative path for parent module
+using TypedTables: Table, columnnames
 
 """"
     Calculates the abundance ratio ``C/O = N_C /N_O``, where ``N_X`` is the number density of element ``X``, from values `o` and `c` from COMARCS model filenames. Three argument version also returns [Fe/H].
