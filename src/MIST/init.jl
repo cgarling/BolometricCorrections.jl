@@ -11,8 +11,8 @@ end
 # const mist_file_info = Dict("CFHTugriz.txz" => (name="CFHT_MegaCam",
 #                                                 header=["Teff", "logg", "FeH", "Av", "Rv", "u", "CaHK", "g", "r", "i_new", "i_old", "z"]))
 
-# Read data from MIST BC file into Table
-function read_mist_bc(fname::AbstractString, header::AbstractVector{<:AbstractString})
+# Read data from unpacked MIST BC file into Table
+function read_mist_bc(fname::AbstractString, header) # ::AbstractVector{<:AbstractString})
     return CSV.read(fname, Table;
                     comment="#", ignorerepeated=true, delim=' ', header=header)
 end
