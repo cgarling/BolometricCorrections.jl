@@ -1,12 +1,16 @@
 module BolometricCorrections
 
+using ArgCheck: @argcheck
 import CSV
+import Tables
 import TypedTables: Table, columnnames, columns, getproperties
 
 # exports from top-level module
 # const test = "asdf" # This is exported at the module level
 # export test
 
+# Interpolation utilities
+include("interp.jl")
 
 # Bolometric correction grid API
 
@@ -51,6 +55,42 @@ function filternames(::AbstractBCGrid) end
 """ `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- should typically only have  dependent variables `logg` and `Teff` remaining. `T` is the data type to use internally and is returned by `eltype`. """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
+"""
+    (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
+                                Teff::AbstractArray{S},
+                                logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+
+All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method generalizes that to vectors for `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The two-argument version that returns a matrix is considerably more efficient.
+"""
+function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+    @argcheck axes(Teff) == axes(logg)
+    @argcheck length(Teff) != 0
+    filters = filternames(table)
+    U = promote_type(T, S, V)
+    if isbitstype(U)
+        return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(Teff), length(filters))
+        # return reshape(reinterpret(promote_type(T, S, V), [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+    else
+        return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
+        # This hcat's into SMatrix which we don't want
+        # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
+    end
+end
+function (table::AbstractBCTable{T})(::Type{Table},
+                                     Teff::AbstractArray{S},
+                                     logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+    filters = filternames(table)
+    return Table(Tables.table(table(Teff, logg); header=filters))
+    # This is correct but the namedtuple creation is inefficient
+    # return Table(NamedTuple{filters}(table(Teff[i], logg[i])) for i in eachindex(Teff, logg))
+    # return Table(NamedTuple{filters,NTuple{length(filters),T}}(table(Teff[i], logg[i])) for i in eachindex(Teff, logg))
+end
+# function (table::AbstractBCTable{T})(::Type{DataFrame},
+#                                      Teff::AbstractArray{S},
+#                                      logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+#     filters = filternames(table)
+#     return DataFrame(table(Teff, logg), SVector(filters))
+# end
 """
     extrema(table::AbstractBCTable)
 
