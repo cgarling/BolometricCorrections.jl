@@ -15,19 +15,24 @@ import Tar
 import Tables # for Tables.matrix conversion
 import TypedTables: Table, columnnames, getproperties, columns
 
+""" `NTuple{5, Symbol}` listing the dependent variables in the MIST BC grid. """
+const _mist_dependents = (:Teff, :logg, :feh, :Av, :Rv)
+""" `NTuple{5, Symbol}` giving the order in which the MIST dependent variables iterate in the post-processed data tables. """
+const _mist_dependents_order = (:logg, :Teff, :Av, :Rv, :feh)
+""" Unique values of `Teff` in the MIST BC tables. """
+const _mist_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250.0, 4500.0, 4750.0, 5000.0, 5250.0, 5500.0, 5750.0, 6000.0, 6250.0, 6500.0, 6750.0, 7000.0, 7250.0, 7500.0, 7750.0, 8000.0, 8250.0, 8500.0, 8750.0, 9000.0, 9250.0, 9500.0, 9750.0, 10000.0, 11000.0, 12000.0, 13000.0, 14000.0, 15000.0, 16000.0, 17000.0, 18000.0, 19000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 60000.0, 70000.0, 80000.0, 90000.0, 100000.0, 110000.0, 120000.0, 130000.0, 140000.0, 150000.0, 160000.0, 170000.0, 180000.0, 190000.0, 200000.0, 300000.0, 400000.0, 500000.0, 600000.0, 700000.0, 800000.0, 900000.0, 1.0e6) # length=70
+""" Unique values of `logg` in the MIST BC tables. """
+const _mist_logg = (-4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5) # length=26
+""" Unique values of `Av` in the MIST BC tables. """
+const _mist_Av = (0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0) # length=13
+""" Unique values of `Rv` in the MIST BC tables. """
+const _mist_Rv = (3.1,) # length=1
+""" Unique values of [Fe/H] in the MIST BC tables. """
+const _mist_feh = (-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75) # length=18
+
+#############################
 # Initialization and datadeps
 include("init.jl")
-
-""" Unique values of `Teff` in the MIST BC tables. """
-const _mist_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250.0, 4500.0, 4750.0, 5000.0, 5250.0, 5500.0, 5750.0, 6000.0, 6250.0, 6500.0, 6750.0, 7000.0, 7250.0, 7500.0, 7750.0, 8000.0, 8250.0, 8500.0, 8750.0, 9000.0, 9250.0, 9500.0, 9750.0, 10000.0, 11000.0, 12000.0, 13000.0, 14000.0, 15000.0, 16000.0, 17000.0, 18000.0, 19000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 60000.0, 70000.0, 80000.0, 90000.0, 100000.0, 110000.0, 120000.0, 130000.0, 140000.0, 150000.0, 160000.0, 170000.0, 180000.0, 190000.0, 200000.0, 300000.0, 400000.0, 500000.0, 600000.0, 700000.0, 800000.0, 900000.0, 1.0e6) 
-""" Unique values of `logg` in the MIST BC tables. """
-const _mist_logg = (-4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5)
-""" Unique values of `Av` in the MIST BC tables. """
-const _mist_Av = (0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0)
-""" Unique values of `Rv` in the MIST BC tables. """
-const _mist_Rv = (3.1,)
-""" Unique values of [Fe/H] in the MIST BC tables. """
-const _mist_feh = (-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75)
 
 function check_vals(feh, Av)
     feh_ext = extrema(_mist_feh)
@@ -64,7 +69,7 @@ struct MISTBCGrid{A,B,C <: AbstractString} <: AbstractBCGrid{A}
 end
 function MISTBCGrid(grid::AbstractString)
     if mapreduce(x->occursin(x,grid), |, ("JWST", "jwst"))
-        fname = mist_processed_fname(datadep"JWST")
+        fname = mist_processed_fname(datadep"MIST_JWST")
         return MISTBCGrid(read_mist_bc_processed(fname), fname)
     end
 end
@@ -73,7 +78,6 @@ Table(grid::MISTBCGrid) = grid.table
 # columns(grid::MISTBCGrid) = columns(Table(grid))
 # getproperties(grid::MISTBCGrid, names::Tuple{Vararg{Symbol}}) = getproperties(Table(grid), names) 
 # A function that will extract the dependent variables from a MIST BC grid
-const _mist_dependents = (:Teff, :logg, :feh, :Av, :Rv)
 extract_dependents(grid::MISTBCGrid) = getproperties(grid, _mist_dependents)
 Base.extrema(grid::MISTBCGrid) = NamedTuple{_mist_dependents}(extrema(col) for col in columns(extract_dependents(grid)))
 # filternames(grid::MISTBCGrid) = [string(name) for name in columnnames(grid)[6:end]]
@@ -89,16 +93,18 @@ struct MISTBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     itp::B     # Interpolator object
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} # NTuple{N, Symbol} giving filter names
 end
+MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)..., itp, filters)
 filternames(table::MISTBCTable) = table.filters
-
-# MISTBCTable(feh::Real, Av::Real, Rv::Real, itp, filters) = MISTBCTable(promote(feh, Av, Rv)..., itp, filters)
-# MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)..., itp, filters)
+# Interpolations uses `bounds` to return interpolation domain
+# Could also just query _mist_Teff and _mist_logg
+Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.knots[2]), logg = extrema(table.itp.knots[1]))
 
 # Use statically known size from filters argument to repack submatrix
 # into a vector of SVectors to pass into interpolator
 function _repack_submatrix(submatrix::AbstractArray{T},
                            filters::NTuple{N, Symbol}) where {T, N}
-    submatrix = reshape(submatrix, length(_mist_logg),
+    submatrix = reshape(submatrix,
+                        length(_mist_logg),
                         length(_mist_Teff),
                         length(filters))
     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
@@ -129,7 +135,7 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
         #                   [submatrix[i,j,:] for i=axes(submatrix,1),j=axes(submatrix,2)],
         #                   Gridded(Linear()))
         # Make use of constant information
-        itp = interpolate((collect(_mist_logg), collect(_mist_Teff)),
+        itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                           # [submatrix[i,j,:] for i=axes(submatrix,1),j=axes(submatrix,2)],
                           # [SVector{29, Float64}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)], # 2x faster than vector
                           _repack_submatrix(submatrix, filters),
