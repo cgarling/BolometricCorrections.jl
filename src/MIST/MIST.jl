@@ -58,12 +58,8 @@ mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fna
 struct MISTBCGrid{A,B,C <: AbstractString} <: AbstractBCGrid{A}
     table::B # Usually a TypedTables.Table
     filename::C
-    # unique_feh::D
-    # unique_Av::D
-    # unique_Rv::D # MIST only has 1 Rv
     function MISTBCGrid(table::B, filename::C) where {B, C}
         A = Base.promote_eltype(first(table))
-        # D = Vector{A}
         new{A, B, C}(table, filename)
     end
 end
@@ -89,9 +85,8 @@ filternames(grid::MISTBCGrid) = columnnames(grid)[length(_mist_dependents)+1:end
 struct MISTBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     feh::A
     Av::A
-    # Rv::A # Only one unique RV for MIST 
     itp::B     # Interpolator object
-    filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} # NTuple{N, Symbol} giving filter names
+    filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)..., itp, filters)
 filternames(table::MISTBCTable) = table.filters
@@ -110,8 +105,6 @@ function _repack_submatrix(submatrix::AbstractArray{T},
     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
 end
 function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
-    # ext = extrema(grid)
-    # @assert ext.feh[1] ≤ feh ≤ ext.feh[2]
     check_vals(feh, Av)
 
     # Exact values are in grid; no interpolation necessary
@@ -121,23 +114,9 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
         subtable = filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
         filters = filternames(grid)
         submatrix = Tables.matrix(getproperties(subtable, filters))
-        # submatrix = reshape(submatrix, 26, 70, 29)
-        # submatrix = reshape(submatrix, length(_mist_logg),
-        #                     length(_mist_Teff),
-        #                     length(filters))
-        # return [SVector{29, Float64}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
 
-        # return submatrix, (subtable.Teff, subtable.logg)
-        # BSpline only supports ranges for x and y, not general ...
-        # itp = scale(interpolate(submatrix, BSpline(Linear())), (subtable.Teff, subtable.logg))
-        # itp = interpolate((subtable.Teff, subtable.logg),
-        # itp = interpolate((unique(subtable.logg), unique(subtable.Teff)),
-        #                   [submatrix[i,j,:] for i=axes(submatrix,1),j=axes(submatrix,2)],
-        #                   Gridded(Linear()))
         # Make use of constant information
         itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                          # [submatrix[i,j,:] for i=axes(submatrix,1),j=axes(submatrix,2)],
-                          # [SVector{29, Float64}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)], # 2x faster than vector
                           _repack_submatrix(submatrix, filters),
                           Gridded(Linear()))
         
