@@ -124,25 +124,7 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
         
     end
 end
-# _name_itp_tuple(val::T, filters::F)::NamedTuple{F,T} where {T,F} = NamedTuple{filters}(val)
-# _name_itp_tuple(filters::F, val::T) where {F,T} = NamedTuple{filters}(val)
-# _name_itp_tuple(val, filters::Val{T}) where T = NamedTuple{T}(val)
-# function (table::MISTBCTable{A,B,N})(Teff::Real, logg::Real) where {A,B,N}
-#     # return NamedTuple{table.filters}(Tuple(table.itp(logg, Teff)))
-#     # return Tuple(table.itp(logg, Teff))
-#     val = table.itp(logg, Teff)
-#     filters = filternames(table)
-#     # return NamedTuple{filters, NTuple{N,A}}(Tuple(table.itp(logg, Teff)))#::NamedTuple{filters, NTuple{N,A}}
-#     return _name_itp_tuple(Tuple(val), Val(filters))
-#     # return _name_itp_tuple(filters, Tuple(val))
-# end
 (table::MISTBCTable)(Teff::Real, logg::Real) = table.itp(logg, Teff)
 # to broadcast over both teff and logg, you do table.(teff, logg')
-
-# Not happy to be using Dierckx but you can use Interpolations.jl
-# but the results are worse than Dierckx because of the continuity
-# boundary conditions; see 
-# https://discourse.julialang.org/t/difference-between-two-interpolation-packages-when-evaluating-derivatives-interpolations-jl-and-dierckx-jl/61747
-
 
 end # module
