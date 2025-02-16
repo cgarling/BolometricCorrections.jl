@@ -30,10 +30,26 @@ const _mist_Rv = (3.1,) # length=1
 """ Unique values of [Fe/H] in the MIST BC tables. """
 const _mist_feh = (-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75) # length=18
 
+# User-facing information on the grid 
+""" Unique values for dependent variables in the MIST bolometric correction grid. """
+const gridinfo = (Teff = _mist_Teff,
+                  logg = _mist_logg,
+                  feh = _mist_feh,
+                  Av = _mist_Av,
+                  Rv = _mist_Rv) 
+                  # dependents = _mist_dependents,
+                  # dependents_order = _mist_dependents_order,
+                  
+
 #############################
 # Initialization and datadeps
 include("init.jl")
 
+"""
+    check_vals(feh, Av)
+
+Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST BC grid. Throws `DomainError` if check fails, returns nothing if check is successful.
+"""
 function check_vals(feh, Av)
     feh_ext = extrema(_mist_feh)
     if feh < first(feh_ext) || feh > last(feh_ext)
@@ -42,7 +58,6 @@ function check_vals(feh, Av)
     Av_ext = extrema(_mist_Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
         throw(DomainError(Av, "Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
-
     end
 end
 
@@ -114,12 +129,9 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
         subtable = filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
         filters = filternames(grid)
         submatrix = Tables.matrix(getproperties(subtable, filters))
-
-        # Make use of constant information
         itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                           _repack_submatrix(submatrix, filters),
                           Gridded(Linear()))
-        
         return MISTBCTable(feh, Av, itp, filters)
         
     end
