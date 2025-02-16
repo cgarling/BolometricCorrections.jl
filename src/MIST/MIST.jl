@@ -3,6 +3,7 @@ module MIST
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable
 import ..BolometricCorrections: filternames
+using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 import CSV
 using DataDeps: register, DataDep, @datadep_str
@@ -109,6 +110,25 @@ filternames(table::MISTBCTable) = table.filters
 # Could also just query _mist_Teff and _mist_logg
 Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.knots[2]), logg = extrema(table.itp.knots[1]))
 
+# Extract a subtable out of table where table.feh == feh and table.Av == Av
+function _select_subtable(table::Table, feh::Real, Av::Real)
+    @argcheck feh ∈ _mist_feh && Av ∈ _mist_Av
+    # return filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
+    # We can use the known structure of the data table to prevent having to do a filter at all
+    # For each unique Rv (1), Av and feh there will be
+    # length(Teff) * length(logg) * length(Rv) rows
+    nrows_per_Av = length(_mist_Teff) * length(_mist_logg) * length(_mist_Rv) # 1820
+    nrows_per_feh = nrows_per_Av * length(_mist_Av)
+    # The order of iteration of the dependent variables is given by _mist_dependents_order
+    # We need to identify the correct feh first, then the correct Av within that
+    idx1 = 1 + nrows_per_feh * (findfirst(==(feh), _mist_feh) - 1)
+    idx2 = idx1 + nrows_per_Av * (findfirst(==(Av), _mist_Av) - 1)
+    idx3 = idx2 + nrows_per_Av - 1
+    result = table[idx2:idx3]
+    # @argcheck all(@. result.feh == feh && result.Av == Av)
+    return result
+end
+
 # Use statically known size from filters argument to repack submatrix
 # into a vector of SVectors to pass into interpolator
 function _repack_submatrix(submatrix::AbstractArray{T},
@@ -126,13 +146,15 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
     if feh ∈ _mist_feh && Av ∈ _mist_Av
         table = Table(grid)
         # Basically all the time is spent in this filter ... 
-        subtable = filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
+        # subtable = filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
+        subtable = _select_subtable(table, feh, Av)
         filters = filternames(grid)
         submatrix = Tables.matrix(getproperties(subtable, filters))
         itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                           _repack_submatrix(submatrix, filters),
                           Gridded(Linear()))
         return MISTBCTable(feh, Av, itp, filters)
+    else # Need to interpolate table to correct [Fe/H] and Av
         
     end
 end

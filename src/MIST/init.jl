@@ -80,7 +80,7 @@ function custom_unpack(fname::AbstractString) # Path to datadep
     # for file in all_files
     #     feh = mist_feh(file) # Get [Fe/H] from file name
     #     table = read_mist_bc(file, header)
-    #     @assert feh ≈ first(table.feh) # Test that filename [Fe/H] agrees with table
+    #     @argcheck feh ≈ first(table.feh) # Test that filename [Fe/H] agrees with table
     #     # Create group for this [Fe/H]
     #     g = HDF5.create_group(fid, @sprintf("%.2f", feh))
     #     # rvs = [@sprintf("%.2f", Rv) for Rv in unique(table.Rv)]
