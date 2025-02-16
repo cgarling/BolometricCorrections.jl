@@ -1,7 +1,7 @@
 module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
-using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable
+using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, interp1d
 import ..BolometricCorrections: filternames
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -141,21 +141,82 @@ function _repack_submatrix(submatrix::AbstractArray{T},
 end
 function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
     check_vals(feh, Av)
+    filters = filternames(grid)
+    table = Table(grid)
 
     # Exact values are in grid; no interpolation necessary
     if feh ∈ _mist_feh && Av ∈ _mist_Av
-        table = Table(grid)
         # Basically all the time is spent in this filter ... 
         # subtable = filter(row -> (row.feh ≈ feh) && (row.Av ≈ Av), table)
         subtable = _select_subtable(table, feh, Av)
-        filters = filternames(grid)
+        # Need to repack the subtable into the correct format for interpolation
         submatrix = Tables.matrix(getproperties(subtable, filters))
         itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                           _repack_submatrix(submatrix, filters),
                           Gridded(Linear()))
         return MISTBCTable(feh, Av, itp, filters)
-    else # Need to interpolate table to correct [Fe/H] and Av
-        
+    else
+        # Need to interpolate table to correct [Fe/H] and Av
+        # Doing basic bilinear interpolation on the matrix representation
+        # of the table to get a new matrix that we can reshape back into a subtable
+        if feh ∈ _mist_feh
+            Av_idx = searchsortedfirst(SVector(_mist_Av), Av) - 1
+            Av1, Av2 = _mist_Av[Av_idx], _mist_Av[Av_idx + 1]
+            # Extract corresponding subtables, retrieve BCs from subtable, convert to matrix
+            mat1 = Tables.matrix(getproperties(_select_subtable(table, feh, Av1), filters))
+            mat2 = Tables.matrix(getproperties(_select_subtable(table, feh, Av2), filters))
+            # submatrix = @. mat1 * (Av2 - Av) / (Av2 - Av1) + mat2 * (Av - Av1) / (Av2 - Av1) # Equivalent, bit slower
+            # submatrix = @. (mat1 * (Av2 - Av) + mat2 * (Av - Av1)) / (Av2 - Av1)
+            submatrix = interp1d(Av, Av1, Av2, mat1, mat2)
+            return submatrix
+            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
+                              _repack_submatrix(submatrix, filters),
+                              Gridded(Linear()))
+            return MISTBCTable(feh, Av, itp, filters)
+        elseif Av ∈ _mist_Av
+            feh_idx = searchsortedfirst(SVector(_mist_feh), feh) - 1
+            feh1, feh2 = _mist_feh[feh_idx], _mist_feh[feh_idx + 1]
+            # Extract corresponding subtables, retrieve BCs from subtable, convert to matrix
+            mat1 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av), filters))
+            mat2 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av), filters))
+            # submatrix = @. (mat1 * (feh2 - feh) + mat2 * (feh - feh1)) / (feh2 - feh1)
+            submatrix = interp1d(feh, feh1, feh2, mat1, mat2)
+            return submatrix
+            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
+                              _repack_submatrix(submatrix, filters),
+                              Gridded(Linear()))
+            return MISTBCTable(feh, Av, itp, filters)
+        else
+            # Identify nearest [Fe/H] and Av values in the table;
+            # all dependent variables are interated in sorted order
+            # in the post-processed data tables
+            feh_idx = searchsortedfirst(SVector(_mist_feh), feh) - 1
+            feh1, feh2 = _mist_feh[feh_idx], _mist_feh[feh_idx + 1]
+            Av_idx = searchsortedfirst(SVector(_mist_Av), Av) - 1
+            Av1, Av2 = _mist_Av[Av_idx], _mist_Av[Av_idx + 1]
+            # Extract corresponding subtables, retrieve BCs from subtable, convert to matrix
+            mat1_1 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av1), filters))
+            mat1_2 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av2), filters))
+            mat2_1 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av1), filters))
+            mat2_2 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av2), filters))
+            # Perform bilinear interpolation
+            # newmat = @. () / (Av2 - Av1) / (feh2 - feh1)
+
+            # This approach ~550 μs
+            # Interpolations.jl expects for grid points (x,y), z has shape (length(x), length(y))
+            bigmat = Matrix{Matrix{Float64}}(undef, 2, 2)
+            bigmat[1,1] = mat1_1
+            bigmat[2,1] = mat1_2
+            bigmat[1,2] = mat2_1
+            bigmat[2,2] = mat2_2
+            return interpolate((SVector(feh1, feh2), SVector(Av1, Av2)),
+                               # [mat1_1, mat1_2, mat2_1, mat2_2],
+                               bigmat,
+                               Gridded(Linear()))(feh, Av)
+
+            # Construct interpolator and return MISTBCTable
+
+        end
     end
 end
 (table::MISTBCTable)(Teff::Real, logg::Real) = table.itp(logg, Teff)
