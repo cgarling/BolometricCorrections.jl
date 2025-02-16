@@ -1,7 +1,7 @@
 module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
-using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, interp1d
+using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, interp1d, interp2d
 import ..BolometricCorrections: filternames
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -168,7 +168,6 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
             # submatrix = @. mat1 * (Av2 - Av) / (Av2 - Av1) + mat2 * (Av - Av1) / (Av2 - Av1) # Equivalent, bit slower
             # submatrix = @. (mat1 * (Av2 - Av) + mat2 * (Av - Av1)) / (Av2 - Av1)
             submatrix = interp1d(Av, Av1, Av2, mat1, mat2)
-            return submatrix
             itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                               _repack_submatrix(submatrix, filters),
                               Gridded(Linear()))
@@ -181,7 +180,6 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
             mat2 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av), filters))
             # submatrix = @. (mat1 * (feh2 - feh) + mat2 * (feh - feh1)) / (feh2 - feh1)
             submatrix = interp1d(feh, feh1, feh2, mat1, mat2)
-            return submatrix
             itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                               _repack_submatrix(submatrix, filters),
                               Gridded(Linear()))
@@ -196,26 +194,29 @@ function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
             Av1, Av2 = _mist_Av[Av_idx], _mist_Av[Av_idx + 1]
             # Extract corresponding subtables, retrieve BCs from subtable, convert to matrix
             mat1_1 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av1), filters))
-            mat1_2 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av2), filters))
             mat2_1 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av1), filters))
+            mat1_2 = Tables.matrix(getproperties(_select_subtable(table, feh1, Av2), filters))
             mat2_2 = Tables.matrix(getproperties(_select_subtable(table, feh2, Av2), filters))
             # Perform bilinear interpolation
-            # newmat = @. () / (Av2 - Av1) / (feh2 - feh1)
+            submatrix = interp2d(feh, Av, feh1, feh2, Av1, Av2, mat1_1, mat2_1, mat1_2, mat2_2)
 
-            # This approach ~550 μs
-            # Interpolations.jl expects for grid points (x,y), z has shape (length(x), length(y))
-            bigmat = Matrix{Matrix{Float64}}(undef, 2, 2)
-            bigmat[1,1] = mat1_1
-            bigmat[2,1] = mat1_2
-            bigmat[1,2] = mat2_1
-            bigmat[2,2] = mat2_2
-            return interpolate((SVector(feh1, feh2), SVector(Av1, Av2)),
-                               # [mat1_1, mat1_2, mat2_1, mat2_2],
-                               bigmat,
-                               Gridded(Linear()))(feh, Av)
+            # # This approach ~550 μs, 350μs for interp2d
+            # # Interpolations.jl expects for grid points (x,y), z has shape (length(x), length(y))
+            # bigmat = Matrix{Matrix{Float64}}(undef, 2, 2)
+            # bigmat[1,1] = mat1_1
+            # bigmat[2,1] = mat2_1
+            # bigmat[1,2] = mat1_2
+            # bigmat[2,2] = mat2_2
+            # submatrix = interpolate((SVector(feh1, feh2), SVector(Av1, Av2)),
+            #                         # [mat1_1, mat1_2, mat2_1, mat2_2],
+            #                         bigmat,
+            #                         Gridded(Linear()))(feh, Av)
 
             # Construct interpolator and return MISTBCTable
-
+            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
+                              _repack_submatrix(submatrix, filters),
+                              Gridded(Linear()))
+            return MISTBCTable(feh, Av, itp, filters)
         end
     end
 end
