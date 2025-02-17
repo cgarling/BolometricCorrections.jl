@@ -128,6 +128,7 @@ using .YBC
 # exports from YBC
 include("MIST/MIST.jl")
 using .MIST
+export MISTBCGrid, MISTBCTable
 # exports from MIST
 
 

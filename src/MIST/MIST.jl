@@ -16,6 +16,8 @@ import Tar
 import Tables # for Tables.matrix conversion
 import TypedTables: Table, columnnames, getproperties, columns
 
+export MISTBCGrid, MISTBCTable
+
 """ `NTuple{5, Symbol}` listing the dependent variables in the MIST BC grid. """
 const _mist_dependents = (:Teff, :logg, :feh, :Av, :Rv)
 """ `NTuple{5, Symbol}` giving the order in which the MIST dependent variables iterate in the post-processed data tables. """
@@ -71,6 +73,20 @@ mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fna
 
 # Data structures
 # A is default data type -- inferred from provided table
+"""
+    MISTBCGrid(grid::AbstractString)
+
+Load and return the MIST bolometric corrections for the given photometric system `grid`. This type is used to create instances of [`MISTBCTable`](@ref) that have fixed dependent grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of `MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
+
+Examples
+```jldoctest
+julia> grid = MISTBCGrid("JWST")
+MIST bolometric correction grid for photometric system MIST_JWST
+
+julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [Fe/H], Av
+MIST bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.11
+```
+"""
 struct MISTBCGrid{A,B,C <: AbstractString} <: AbstractBCGrid{A}
     table::B # Usually a TypedTables.Table
     filename::C
@@ -85,6 +101,8 @@ function MISTBCGrid(grid::AbstractString)
         return MISTBCGrid(read_mist_bc_processed(fname), fname)
     end
 end
+(grid::MISTBCGrid)(feh::Real, Av::Real) = MISTBCTable(feh, Av, grid)
+Base.show(io::IO, z::MISTBCGrid) = print(io, "MIST bolometric correction grid for photometric system ", splitpath(splitext(z.filename)[1])[end])
 Table(grid::MISTBCGrid) = grid.table
 # columnnames(grid::MISTBCGrid) = columnnames(Table(grid))
 # columns(grid::MISTBCGrid) = columns(Table(grid))
@@ -105,6 +123,7 @@ struct MISTBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)..., itp, filters)
+Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ", z.feh, " and V-band extinction ", z.Av)
 filternames(table::MISTBCTable) = table.filters
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg
@@ -139,6 +158,23 @@ function _repack_submatrix(submatrix::AbstractArray{T},
                         length(filters))
     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
 end
+"""
+    MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
+
+Interpolates the MIST bolometric corrections in `grid` to a fixed value of \\[Fe/H\\] (`feh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent variables (the MIST BCs have only one `Rv` value). Returns an instance that is callable with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function of temperature and surface gravity.
+
+Examples
+```jldoctest
+julia> grid = MISTBCGrid("JWST")
+MIST bolometric correction grid for photometric system MIST_JWST
+
+julia> table = MISTBCTable(-1.01, 0.011, grid)
+MIST bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.011
+
+julia> length(table(2755, 0.01)) == 29 # Returns BC in each filter
+true
+```
+"""
 function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
     check_vals(feh, Av)
     filters = filternames(grid)
