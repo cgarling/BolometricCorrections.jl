@@ -13,6 +13,7 @@ import TypedTables: Table, columnnames, columns, getproperties
 # Interpolation utilities
 include("interp.jl")
 
+#################################
 # Bolometric correction grid API
 
 """ `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. """
@@ -124,8 +125,45 @@ Returns a `NTuple{N, Symbol}` containing the names of the photometric filters co
 """
 function filternames(::AbstractBCTable) end
 
+#################################
+# Zeropoint conversion API
+
+""" `AbstractZeropoints` is the abstract supertype for information regarding the
+photometric zeropoints assumed for a particular grid of bolometric corrections and supports
+conversion between systems (AB, Vega, ST). """
+abstract type AbstractZeropoints end # {T <: Real} end
+
+"""
+    vegamags(zpt::AbstractZeropoints, mags, filter)
+
+Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
+in the given `filter` to the Vega magnitude system.
+"""
+function vegamags(zpt::AbstractZeropoints, filter, mags) end
+"""
+    stmags(zpt::AbstractZeropoints, mags, filter)
+
+Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
+in the given `filter` to the ST magnitude system.
+"""
+function stmags(zpt::AbstractZeropoints, filter, mags) end
+"""
+    abmags(zpt::AbstractZeropoints, mags, filter)
+
+Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
+in the given `filter` to the AB magnitude system.
+"""
+function abmags(zpt::AbstractZeropoints, filter, mags) end
+"""
+    filternames(zpt::AbstractZeropoints)
+
+Returns a `Vector{String}` containing the names of the photometric filters in the table of zeropoints.
+"""
+function filternames(::AbstractZeropoints) end
+#################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, filternames
+export Table, columnnames, columns, getproperties, filternames, vegamags,
+    stmags, abmags
 
 # Include submodules
 include("YBC/YBC.jl")
