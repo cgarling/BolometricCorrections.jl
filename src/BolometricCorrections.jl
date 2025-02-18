@@ -1,6 +1,7 @@
 module BolometricCorrections
 
 using ArgCheck: @argcheck
+using Compat: @compat # for @compat public <x>
 import CSV
 import Tables
 import TypedTables: Table, columnnames, columns, getproperties
@@ -123,11 +124,16 @@ Returns a `NTuple{N, Symbol}` containing the names of the photometric filters co
 """
 function filternames(::AbstractBCTable) end
 
+# Top-level API exports
+export Table, columnnames, columns, getproperties, filternames
+
+# Include submodules
 include("YBC/YBC.jl")
 using .YBC
 # exports from YBC
 include("MIST/MIST.jl")
 using .MIST
+@compat public MIST
 export MISTBCGrid, MISTBCTable
 # exports from MIST
 
