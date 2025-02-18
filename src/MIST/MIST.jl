@@ -4,8 +4,8 @@ Submodule enabling interaction with the MIST grid of stellar bolometric correcti
 module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
-using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, interp1d, interp2d
-import ..BolometricCorrections: filternames
+using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, interp1d, interp2d
+import ..BolometricCorrections: filternames, vegamags, abmags, stmags
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
@@ -48,6 +48,75 @@ const gridinfo = (Teff = _mist_Teff,
                   # dependents_order = _mist_dependents_order,
 @compat public gridinfo
 
+""" Struct to contain the MIST zeropoint information.
+A constant instance is available as [`BolometricCorrections.MIST.zeropoints`](@ref).
+Instances are callable with a `filtername::AbstractString` which will return
+the zeropoint entry for the relevant filter. The full table can be retrieved
+with `Table(zpt)` and the list of available filters can be retrieved with
+`filternames(zpt)`. """
+struct MISTZeropoints{T} <: AbstractZeropoints
+    table::T
+end
+function Base.getproperty(zpt::MISTZeropoints, name::Symbol)
+    # table = Table(zpt)
+    if name == :table
+        return getfield(zpt, :table)
+    end
+    # filters = filternames(zpt)
+    # strname = String(name)
+    # for (i, filt) in enumerate(filters)
+    #     if strname == filt
+    #         return Table(zpt)[i]
+    #     end
+    # end
+    # println(filters)
+    # throw(ArgumentError("""No exact match found for $filtername in MIST filterset, please review above list of filters."""))
+    return zpt(String(name))
+end
+Table(zpt::MISTZeropoints) = zpt.table
+filternames(zpt::MISTZeropoints) = Table(zpt).filter
+function (zpt::MISTZeropoints)(filtername::AbstractString)
+    filters = filternames(zpt)
+    for (i, filt) in enumerate(filters)
+        if filtername == filt
+            return Table(zpt)[i]
+        end
+    end
+    println(filters)
+    throw(ArgumentError("""No exact match found for $filtername in MIST filterset, please review above list of filters."""))
+end
+function vegamags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, mags)
+    nt = zpt(String(filter))
+    system = nt.system
+    # None of the MIST BCs are in STmags so the only two cases are system == AB or Vega
+    if system == "AB"
+        return mags .- nt.VegaAB
+    else # system == "Vega"
+        return mags
+    end
+end
+function abmags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, mags)
+    nt = zpt(String(filter))
+    system = nt.system
+    # None of the MIST BCs are in STmags so the only two cases are system == AB or Vega
+    if system == "AB"
+        return mags
+    else # system == "Vega"
+        return mags .+ nt.VegaAB
+    end
+end
+function stmags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, mags)
+    nt = zpt(String(filter))
+    println(nt)
+    system = nt.system
+    # None of the MIST BCs are in STmags
+    if system == "AB"
+        # First convert to Vega, then to ST
+        return mags .- nt.VegaAB .+ nt.VegaST
+    else # system == "Vega"
+        return mags .+ nt.VegaST
+    end
+end
 """
 Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
 For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
@@ -62,9 +131,22 @@ Above is the information for WISE W1, which is tabulated by default in Vega mags
 (as noted in column "system"). To convert WISE mags from Vega to AB is a simple operation:
 mag(AB) = mag(Vega) + "mag(Vega/AB)" [column 4 in the file].
 For example, a star with WISE\\_W1(Vega) = 0.0 would have WISE\\_W1(AB) = 2.66.
+
+To ease compatibility between `Symbol` and `String` representations, the
+mag(Vega/ST) and mag(Vega/AB) columns have been simplified to VegaST and VegaAB.
+
+This constant is an instance of [`MISTZeropoints`](@ref BolometricCorrections.MIST.MISTZeropoints);
+see the docs for more informations on supported operations.
 """
-const zeropoints = CSV.read(joinpath(@__DIR__, "zeropoints.txt"), Table; header=1, delim=' ', ignorerepeated=true)
+const zeropoints = MISTZeropoints(CSV.read(joinpath(@__DIR__, "zeropoints.txt"),
+                                           Table; # header=1,
+                                           header=[:filter, :system, :VegaST, :VegaAB], skipto=2,
+                                           delim=' ', ignorerepeated=true))
+# const zeropoints = CSV.read(joinpath(@__DIR__, "zeropoints.txt"), Table; header=1, delim=' ', ignorerepeated=true)
 @compat public zeropoints
+
+# Might be nice to have zeropoints be a namedtuple, something like
+# NamedTuple{Tuple(Symbol(i) for i in BolometricCorrections.MIST.zeropoints.filter)}(NamedTuple{keys(row)[2:end]}(values(row)[2:end]) for row in rows(BolometricCorrections.MIST.zeropoints))
 # """
 # All filters available in the MIST BC grid.
 # """
