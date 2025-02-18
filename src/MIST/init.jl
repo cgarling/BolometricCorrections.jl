@@ -111,6 +111,10 @@ const BC_sets = ("CFHT_MegaCam", "DECam", "GALEX", "HST_ACS_HRC", "HST_ACS_WFC",
 
 function __init__()
     prefix = "https://waps.cfa.harvard.edu/MIST/BC_tables/"
+    # Actually just distribute zeropoints with source
+    # register(DataDep("MIST_zeropoints", "Zeropoint conversion table for MIST BCs",
+    #                  prefix*"zeropoints.txt"))
+    # datadep"MIST_zeropoints" # We always want to download these
     register(DataDep("MIST_CFHT_MegaCam", "MIST bolometric corrections for CFHT/MegaCam",
                      prefix*"CFHTugriz.txz",
                      "cf10e060b65591cb43fc55544260a75ec559c28d9454a4f681a197af26aa0fcd";

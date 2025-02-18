@@ -24,5 +24,10 @@ MISTBCGrid
 MISTBCTable
 ```
 
+# Photometric Zeropoints
+```@docs
+BolometricCorrections.MIST.zeropoints
+```
+
 # References
  - See section 5.4 of [Choi+2016](https://ui.adsabs.harvard.edu/abs/2016ApJ...823..102C/abstract) for a description of the MIST bolometric corrections.

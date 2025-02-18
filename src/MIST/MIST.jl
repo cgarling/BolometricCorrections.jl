@@ -47,6 +47,29 @@ const gridinfo = (Teff = _mist_Teff,
                   # dependents = _mist_dependents,
                   # dependents_order = _mist_dependents_order,
 @compat public gridinfo
+
+"""
+Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
+For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
+one line for each filter in our collection. The contents of the file can be used to convert
+amongst AB, ST, and Vega magnitude systems as follows.
+
+| filter  | system | mag(Vega/ST) | mag(Vega/AB) |
+|---------|--------|--------------|--------------|
+| WISE_W1 | Vega   | 6.610497     | 2.665543     |
+
+Above is the information for WISE W1, which is tabulated by default in Vega mags
+(as noted in column "system"). To convert WISE mags from Vega to AB is a simple operation:
+mag(AB) = mag(Vega) + "mag(Vega/AB)" [column 4 in the file].
+For example, a star with WISE\\_W1(Vega) = 0.0 would have WISE\\_W1(AB) = 2.66.
+"""
+const zeropoints = CSV.read(joinpath(@__DIR__, "zeropoints.txt"), Table; header=1, delim=' ', ignorerepeated=true)
+@compat public zeropoints
+# """
+# All filters available in the MIST BC grid.
+# """
+# const filters = zeropoints.filter
+# @compat public filters
                   
 
 #############################
