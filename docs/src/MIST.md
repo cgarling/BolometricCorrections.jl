@@ -27,6 +27,7 @@ MISTBCTable
 # Photometric Zeropoints
 ```@docs
 BolometricCorrections.MIST.zeropoints
+BolometricCorrections.MIST.MISTZeropoints
 ```
 
 # References
