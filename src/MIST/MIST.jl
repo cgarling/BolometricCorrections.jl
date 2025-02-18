@@ -56,7 +56,8 @@ include("init.jl")
 """
     check_vals(feh, Av)
 
-Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST BC grid. Throws `DomainError` if check fails, returns nothing if check is successful.
+Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST BC grid.
+Throws `DomainError` if check fails, returns `nothing` if check is successful.
 """
 function check_vals(feh, Av)
     feh_ext = extrema(_mist_feh)
@@ -81,7 +82,10 @@ mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fna
 """
     MISTBCGrid(grid::AbstractString)
 
-Load and return the MIST bolometric corrections for the given photometric system `grid`. This type is used to create instances of [`MISTBCTable`](@ref) that have fixed dependent grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of `MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
+Load and return the MIST bolometric corrections for the given photometric system `grid`.
+This type is used to create instances of [`MISTBCTable`](@ref) that have fixed dependent
+grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of
+`MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
 
 Examples
 ```jldoctest
@@ -107,14 +111,17 @@ function MISTBCGrid(grid::AbstractString)
     end
 end
 (grid::MISTBCGrid)(feh::Real, Av::Real) = MISTBCTable(feh, Av, grid)
-Base.show(io::IO, z::MISTBCGrid) = print(io, "MIST bolometric correction grid for photometric system ", splitpath(splitext(z.filename)[1])[end])
+Base.show(io::IO, z::MISTBCGrid) = print(io, "MIST bolometric correction grid for photometric system ",
+                                         splitpath(splitext(z.filename)[1])[end])
 Table(grid::MISTBCGrid) = grid.table
 # columnnames(grid::MISTBCGrid) = columnnames(Table(grid))
 # columns(grid::MISTBCGrid) = columns(Table(grid))
 # getproperties(grid::MISTBCGrid, names::Tuple{Vararg{Symbol}}) = getproperties(Table(grid), names) 
 # A function that will extract the dependent variables from a MIST BC grid
 extract_dependents(grid::MISTBCGrid) = getproperties(grid, _mist_dependents)
-Base.extrema(grid::MISTBCGrid) = NamedTuple{_mist_dependents}(extrema(col) for col in columns(extract_dependents(grid)))
+function Base.extrema(grid::MISTBCGrid)
+    return NamedTuple{_mist_dependents}(extrema(col) for col in columns(extract_dependents(grid)))
+end
 # filternames(grid::MISTBCGrid) = [string(name) for name in columnnames(grid)[6:end]]
 filternames(grid::MISTBCGrid) = columnnames(grid)[length(_mist_dependents)+1:end]
 
@@ -128,7 +135,8 @@ struct MISTBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)..., itp, filters)
-Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ", z.feh, " and V-band extinction ", z.Av)
+Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ",
+                                          z.feh, " and V-band extinction ", z.Av)
 filternames(table::MISTBCTable) = table.filters
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg
@@ -166,7 +174,11 @@ end
 """
     MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
 
-Interpolates the MIST bolometric corrections in `grid` to a fixed value of \\[Fe/H\\] (`feh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent variables (the MIST BCs have only one `Rv` value). Returns an instance that is callable with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function of temperature and surface gravity.
+Interpolates the MIST bolometric corrections in `grid` to a fixed value of \\[Fe/H\\]
+(`feh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
+variables (the MIST BCs have only one `Rv` value). Returns an instance that is callable
+with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function
+of temperature and surface gravity.
 
 Examples
 ```jldoctest
