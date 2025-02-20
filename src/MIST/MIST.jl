@@ -19,6 +19,7 @@ using StaticArrays: SVector
 import Tar
 import Tables # for Tables.matrix conversion
 import TypedTables: Table, columnnames, getproperties, columns
+using Unicode: normalize # To normalize string arguments
 
 export MISTBCGrid, MISTBCTable
 
@@ -213,10 +214,33 @@ struct MISTBCGrid{A,B,C <: AbstractString} <: AbstractBCGrid{A}
     end
 end
 function MISTBCGrid(grid::AbstractString)
-    if mapreduce(x->occursin(x,grid), |, ("JWST", "jwst"))
+    # Normalize string argument (casefold=true makes lowercase)
+    grid = normalize(grid; casefold=true)
+    println(grid)
+    find_func = Base.Fix2(occursin, grid)
+    # if mapreduce(x->occursin(x, grid), |, ("JWST", "jwst"))
+    # if mapreduce(find_func, |, ("JWST", "jwst"))
+    if find_func("jwst")
         fname = mist_processed_fname(datadep"MIST_JWST")
-        return MISTBCGrid(read_mist_bc_processed(fname), fname)
+    # Cover multiple HST instruments gracefully
+    elseif find_func("hst")
+        if find_func("wfpc2")
+            fname = mist_processed_fname(datadep"MIST_HST_WFPC2")
+        elseif find_func("wfc3")
+            fname = mist_processed_fname(datadep"MIST_HST_WFC3")
+        elseif mapreduce(find_func, &, ("acs", "hrc"))
+            fname = mist_processed_fname(datadep"MIST_HST_ACS_HRC")
+        elseif mapreduce(find_func, &, ("acs", "wfc"))
+            fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
+        else # Name not fully specified, error
+            throw(ArgumentError("""Requested grid $grid unclear.
+                                   Supported HST bolometric correction grids are "hst_acs_wfc" for the
+                                   ACS Wide Field Channel, "hst_acs_hrc" for the ACS High-Resolution
+                                   Channel, "hst_wfpc2" for the Wide Field and Planetary Camera 2,
+                                   and "hst_wfc3" for the Wide Field Camera 3."""))
+        end
     end
+    return MISTBCGrid(read_mist_bc_processed(fname), fname)
 end
 (grid::MISTBCGrid)(feh::Real, Av::Real) = MISTBCTable(feh, Av, grid)
 Base.show(io::IO, z::MISTBCGrid) = print(io, "MIST bolometric correction grid for photometric system ",

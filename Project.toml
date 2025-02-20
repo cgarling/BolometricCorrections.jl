@@ -15,6 +15,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
+Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [compat]
 CSV = "0.10"
@@ -25,10 +26,11 @@ Interpolations = "0.15"
 Printf = "<0.0.1, 1"
 SafeTestsets = "0.1"
 StaticArrays = "1"
-Test = "<0.0.1, 1"
 Tables = "1"
 Tar = "<0.0.1, 1"
+Test = "<0.0.1, 1"
 TypedTables = "1"
+Unicode = "<0.0.1, 1"
 julia = "1.6"
 
 [extras]

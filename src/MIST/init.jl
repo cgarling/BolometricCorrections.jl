@@ -127,11 +127,11 @@ function __init__()
                      prefix*"GALEX.txz",
                      "c390b58e3d1d15fd6c276ead3d08030ee12b36d03b7413296bb9a1caeda48766";
                      post_fetch_method=custom_unpack))
-    register(DataDep("MIST_HST_ACS_HRC", "MIST bolometric corrections for HST ACS/HRC",
+    register(DataDep("MIST_HST_ACS_HRC", "MIST bolometric corrections for HST ACS High-Resolution Channel",
                      prefix*"HST_ACSHR.txz",
                      "065e5235a55b24541a027000f358a08036e7305fb105865497e8e8c452fa512d";
                      post_fetch_method=custom_unpack))
-    register(DataDep("MIST_HST_ACS_WFC", "MIST bolometric corrections for HST ACS WFC",
+    register(DataDep("MIST_HST_ACS_WFC", "MIST bolometric corrections for HST ACS Wide Field Channel",
                      prefix*"HST_ACSWF.txz",
                      "5e48f529d245dae122f3ac86c6524f34cf6b0952816cd4a567d78c41e3439571";
                      post_fetch_method=custom_unpack))
