@@ -1,6 +1,13 @@
 using Documenter
 using BolometricCorrections
-import BolometricCorrections
+# import BolometricCorrections
+
+import PyPlot as plt
+# Use "agg" backend for file output;
+# file output only, no interactivity
+backend = plt.matplotlib.get_backend() # save default backend to re-enable after execution
+plt.matplotlib.use("agg")
+# ENV["MPLBACKEND"] = "agg"
 
 # The `format` below makes it so that urls are set to "pretty" if you are pushing them to a hosting service, and basic if you are just using them locally to make browsing easier.
 
@@ -37,3 +44,7 @@ deploydocs(;
     versions = ["stable" => "v^", "v#.#"],
     push_preview=true,
 )
+
+# Re-enable initial backend
+plt.matplotlib.use(backend)
+nothing
