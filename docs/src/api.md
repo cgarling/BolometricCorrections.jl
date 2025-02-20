@@ -12,11 +12,13 @@ BolometricCorrections.AbstractBCTable
 filternames(::BolometricCorrections.AbstractBCTable)
 ```
 
-# Photometric Zeropoints API
+# [Photometric Zeropoints API](@id zpt_api)
 ```@docs
 BolometricCorrections.AbstractZeropoints
 filternames(::BolometricCorrections.AbstractZeropoints)
 vegamags
 abmags
 stmags
+BolometricCorrections.Mbol
+BolometricCorrections.Lbol
 ```

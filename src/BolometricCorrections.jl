@@ -126,7 +126,7 @@ Returns a `NTuple{N, Symbol}` containing the names of the photometric filters co
 function filternames(::AbstractBCTable) end
 
 #################################
-# Zeropoint conversion API
+# Zeropoint definition and conversion API
 
 """ `AbstractZeropoints` is the abstract supertype for information regarding the
 photometric zeropoints assumed for a particular grid of bolometric corrections and supports
@@ -159,11 +159,24 @@ function abmags(zpt::AbstractZeropoints, filter, mags) end
 
 Returns a `Vector{String}` containing the names of the photometric filters in the table of zeropoints.
 """
-function filternames(::AbstractZeropoints) end
+function filternames(zpt::AbstractZeropoints) end
+"""
+    Mbol(zpt::AbstractZeropoints)
+
+Returns the solar bolometric magnitude assumed in the definition of the BC grid.
+"""
+function Mbol(zpt::AbstractZeropoints) end
+"""
+    Lbol(zpt::AbstractZeropoints)
+
+Returns the solar bolometric luminosity [erg / s] assumed in the definition of the BC grid.
+"""
+function Lbol(zpt::AbstractZeropoints) end
+
 #################################
 # Top-level API exports
 export Table, columnnames, columns, getproperties, filternames, vegamags,
-    stmags, abmags
+    stmags, abmags, Mbol, Lbol
 
 # Include submodules
 include("YBC/YBC.jl")

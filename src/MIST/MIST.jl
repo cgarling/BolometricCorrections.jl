@@ -5,7 +5,7 @@ module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, interp1d, interp2d
-import ..BolometricCorrections: filternames, vegamags, abmags, stmags
+import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
@@ -117,6 +117,9 @@ function stmags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, ma
         return mags .+ nt.VegaST
     end
 end
+Mbol(::MISTZeropoints) = 4.74
+Lbol(::MISTZeropoints) = 3.828e33
+
 """
 Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
 For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
