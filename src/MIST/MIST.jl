@@ -75,6 +75,7 @@ function Base.getproperty(zpt::MISTZeropoints, name::Symbol)
     return zpt(String(name))
 end
 Table(zpt::MISTZeropoints) = zpt.table
+Base.show(io::IO, zpt::MISTZeropoints) = display(Table(zpt))
 filternames(zpt::MISTZeropoints) = Table(zpt).filter
 function (zpt::MISTZeropoints)(filtername::AbstractString)
     filters = filternames(zpt)
@@ -108,7 +109,6 @@ function abmags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, ma
 end
 function stmags(zpt::MISTZeropoints, filter::Union{Symbol, <:AbstractString}, mags)
     nt = zpt(String(filter))
-    println(nt)
     system = nt.system
     # None of the MIST BCs are in STmags
     if system == "AB"
@@ -216,10 +216,7 @@ end
 function MISTBCGrid(grid::AbstractString)
     # Normalize string argument (casefold=true makes lowercase)
     grid = normalize(grid; casefold=true)
-    println(grid)
     find_func = Base.Fix2(occursin, grid)
-    # if mapreduce(x->occursin(x, grid), |, ("JWST", "jwst"))
-    # if mapreduce(find_func, |, ("JWST", "jwst"))
     if find_func("jwst")
         fname = mist_processed_fname(datadep"MIST_JWST")
     # Cover multiple HST instruments gracefully
