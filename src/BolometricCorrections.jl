@@ -62,7 +62,7 @@ Base.eltype(::AbstractBCTable{T}) where T = T
                                 Teff::AbstractArray{S},
                                 logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
 
-All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method generalizes that to vectors for `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The two-argument version that returns a matrix is considerably more efficient.
+All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method broadcasts the operation over arrays of `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The two-argument version that returns a matrix is considerably more efficient.
 """
 function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
     @argcheck axes(Teff) == axes(logg)
@@ -70,8 +70,7 @@ function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray
     filters = filternames(table)
     U = promote_type(T, S, V)
     if isbitstype(U)
-        return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(Teff), length(filters))
-        # return reshape(reinterpret(promote_type(T, S, V), [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+        return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
     else
         return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
         # This hcat's into SMatrix which we don't want
@@ -98,13 +97,13 @@ end
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction table (e.g., `logg`, `Teff`).
 """
-function Base.extrema(::AbstractBCTable) end
+Base.extrema(::AbstractBCTable)
 """
     Table(table::AbstractBCTable)
 
 Returns a `TypedTables.Table` containing the data underlying the bolometric correction table.
 """
-function Table(::AbstractBCTable) end
+Table(::AbstractBCTable)
 """
     columnnames(table::AbstractBCTable)
 
@@ -134,21 +133,21 @@ conversion between systems (AB, Vega, ST). """
 abstract type AbstractZeropoints end # {T <: Real} end
 
 """
-    vegamags(zpt::AbstractZeropoints, mags, filter)
+    vegamags(zpt::AbstractZeropoints, filter, mags)
 
 Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
 in the given `filter` to the Vega magnitude system.
 """
 function vegamags(zpt::AbstractZeropoints, filter, mags) end
 """
-    stmags(zpt::AbstractZeropoints, mags, filter)
+    stmags(zpt::AbstractZeropoints, filter, mags)
 
 Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
 in the given `filter` to the ST magnitude system.
 """
 function stmags(zpt::AbstractZeropoints, filter, mags) end
 """
-    abmags(zpt::AbstractZeropoints, mags, filter)
+    abmags(zpt::AbstractZeropoints, filter, mags)
 
 Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
 in the given `filter` to the AB magnitude system.
