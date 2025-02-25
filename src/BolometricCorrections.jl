@@ -43,6 +43,11 @@ columnnames(grid::AbstractBCGrid) = columnnames(Table(grid))
 Returns the columns of the table underlying the bolometric correction grid.
 """
 columns(grid::AbstractBCGrid) = columns(Table(grid))
+"""
+    getproperties(grid::AbstractBCGrid, names::Tuple{Vararg{Symbol}})
+
+Returns properties `names` from the provided bolometric correction grid.
+"""
 getproperties(grid::AbstractBCGrid, names::Tuple{Vararg{Symbol}}) = getproperties(Table(grid), names)
 """
     filternames(grid::AbstractBCGrid)
@@ -54,16 +59,16 @@ function filternames(::AbstractBCGrid) end
 #################################
 # Bolometric correction table API
 
-""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- should typically only have  dependent variables `logg` and `Teff` remaining. `T` is the data type to use internally and is returned by `eltype`. """
-abstract type AbstractBCTable{T <: Real} end
-Base.eltype(::AbstractBCTable{T}) where T = T
-"""
+""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- should typically only have  dependent variables `logg` and `Teff` remaining. `T` is the data type to use internally and is returned by `eltype`.
+
     (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
                                 Teff::AbstractArray{S},
                                 logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
 
-All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method broadcasts the operation over arrays of `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The two-argument version that returns a matrix is considerably more efficient.
+All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method broadcasts the operation over arrays of `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The three-argument version that returns a `Table` has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. 
 """
+abstract type AbstractBCTable{T <: Real} end
+Base.eltype(::AbstractBCTable{T}) where T = T
 function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
     @argcheck axes(Teff) == axes(logg)
     @argcheck length(Teff) != 0
@@ -77,12 +82,15 @@ function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
-function (table::AbstractBCTable{T})(::Type{Table},
-                                     Teff::AbstractArray{S},
-                                     logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+function (table::AbstractBCTable)(::Type{Table},
+                                  Teff::AbstractArray{<:Real},
+                                  logg::AbstractArray{<:Real})
     filters = filternames(table)
-    return Table(Tables.table(table(Teff, logg); header=filters))
-    # This is correct but the namedtuple creation is inefficient
+    # Mostly fixed ~3--5 μs runtime cost
+    return Table(Tables.table(PermutedDimsArray(table(Teff, logg), (2,1)); header=filters))
+    # More expensive due to data copy with permutedims
+    # return Table(Tables.table(permutedims(table(Teff, logg)); header=filters))
+    # This is correct but the cost of namedtuple creation scales poorly with length of argument
     # return Table(NamedTuple{filters}(table(Teff[i], logg[i])) for i in eachindex(Teff, logg))
     # return Table(NamedTuple{filters,NTuple{length(filters),T}}(table(Teff[i], logg[i])) for i in eachindex(Teff, logg))
 end
@@ -116,6 +124,11 @@ columnnames(table::AbstractBCTable) = columnnames(Table(table))
 Returns the columns of the table underlying the bolometric correction table.
 """
 columns(table::AbstractBCTable) = columns(Table(table))
+"""
+    getproperties(grid::AbstractBCGrid, names::Tuple{Vararg{Symbol}})
+
+Returns properties `names` from the provided bolometric correction grid.
+"""
 getproperties(table::AbstractBCTable, names::Tuple{Vararg{Symbol}}) = getproperties(Table(table), names)
 """
     filternames(table::AbstractBCGrid)
@@ -140,19 +153,19 @@ in the given `filter` to the Vega magnitude system.
 """
 function vegamags(zpt::AbstractZeropoints, filter, mags) end
 """
-    stmags(zpt::AbstractZeropoints, filter, mags)
-
-Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
-in the given `filter` to the ST magnitude system.
-"""
-function stmags(zpt::AbstractZeropoints, filter, mags) end
-"""
     abmags(zpt::AbstractZeropoints, filter, mags)
 
 Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
 in the given `filter` to the AB magnitude system.
 """
 function abmags(zpt::AbstractZeropoints, filter, mags) end
+"""
+    stmags(zpt::AbstractZeropoints, filter, mags)
+
+Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
+in the given `filter` to the ST magnitude system.
+"""
+function stmags(zpt::AbstractZeropoints, filter, mags) end
 """
     filternames(zpt::AbstractZeropoints)
 
@@ -162,13 +175,13 @@ function filternames(zpt::AbstractZeropoints) end
 """
     Mbol(zpt::AbstractZeropoints)
 
-Returns the solar bolometric magnitude assumed in the definition of the BC grid.
+Returns the absolute bolometric magnitude of the Sun assumed in the definition of the BC grid.
 """
 function Mbol(zpt::AbstractZeropoints) end
 """
     Lbol(zpt::AbstractZeropoints)
 
-Returns the solar bolometric luminosity [erg / s] assumed in the definition of the BC grid.
+Returns the bolometric luminosity [erg / s] of the Sun assumed in the definition of the BC grid.
 """
 function Lbol(zpt::AbstractZeropoints) end
 

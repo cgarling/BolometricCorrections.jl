@@ -10,7 +10,7 @@ using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
 import CSV
-using DataDeps: register, DataDep, @datadep_str
+using DataDeps: register, DataDep, @datadep_str # registry contains list of registered datadeps
 # using DataInterpolations: PCHIPInterpolation # AbstractInterpolation, AkimaInterpolation, LinearInterpolation, CubicSpline, CubicHermiteSpline,
 using Interpolations: interpolate, Linear, Gridded # scale, BSpline
 # import HDF5 # not currently using

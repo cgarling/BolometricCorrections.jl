@@ -32,6 +32,19 @@ keys(BolometricCorrections.MIST.gridinfo)
 
 ```@docs
 MISTBCGrid
+```
+
+The constructor for `MISTBCGrid` includes a parser to translate most human-readable photometric system names (e.g., `"HST/ACS-WFC"`) into their proper internal identifiers. The full list of internal specifiers is given below.
+
+```@example
+import DataDeps
+using BolometricCorrections.MIST
+println(keys(DataDeps.registry))
+```
+
+Once a BC grid has been constructed for a particular choice of photometric system, a BC table (with variables \[Fe/H\] and Av fixed) can be interpolated. 
+
+```@docs
 MISTBCTable
 ```
 
