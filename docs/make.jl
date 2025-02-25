@@ -1,4 +1,5 @@
-using Documenter
+using Documenter: makedocs, HTML, deploydocs
+using DocumenterCitations: CitationBibliography
 using BolometricCorrections
 # import BolometricCorrections
 
@@ -20,23 +21,28 @@ plt.matplotlib.use("agg")
 
 # DocMeta.setdocmeta!(BolometricCorrections, :DocTestSetup, :(using BolometricCorrections); recursive=true)
 
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
+
 makedocs(
     sitename = "BolometricCorrections.jl",
     modules = [BolometricCorrections],
-    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true",
-                             size_threshold_warn = 409600, # v1.0.0 default: 102400 (bytes)
-                             size_threshold = 819200,      # v1.0.0 default: 204800 (bytes)
-                             example_size_threshold=0),    # Write all @example to file
+    format = HTML(prettyurls = get(ENV, "CI", nothing) == "true",
+                  assets = String["assets/citations.css"],
+                  size_threshold_warn = 409600, # v1.0.0 default: 102400 (bytes)
+                  size_threshold = 819200,      # v1.0.0 default: 204800 (bytes)
+                  example_size_threshold=0),    # Write all @example to file
     authors = "Chris Garling",
     pages = ["index.md",
              "MIST.md",
                   # "Internals" => ["fitting/internals.md",
              #                 "fitting/kernels.md"]],
              "api.md",
+             "refs.md",
              "doc_index.md"],
     doctest = false,
     linkcheck = true,
-    warnonly = [:missing_docs, :linkcheck]
+    warnonly = [:missing_docs, :linkcheck],
+    plugins = [bib]
 )
 
 deploydocs(;

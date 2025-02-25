@@ -1,18 +1,18 @@
 # [API Reference](@id api)
 
-# BC Grid API
+## BC Grid API
 ```@docs
 BolometricCorrections.AbstractBCGrid
 filternames(::BolometricCorrections.AbstractBCGrid)
 ```
 
-# BC Table API
+## BC Table API
 ```@docs
 BolometricCorrections.AbstractBCTable
 filternames(::BolometricCorrections.AbstractBCTable)
 ```
 
-# [Photometric Zeropoints API](@id zpt_api)
+## [Photometric Zeropoints API](@id zpt_api)
 ```@docs
 BolometricCorrections.AbstractZeropoints
 filternames(::BolometricCorrections.AbstractZeropoints)
