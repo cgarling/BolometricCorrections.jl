@@ -4,8 +4,9 @@ Submodule enabling interaction with the MIST grid of stellar bolometric correcti
 module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
-using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, interp1d, interp2d
-import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol
+using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
+    interp1d, interp2d
+import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
@@ -22,7 +23,7 @@ import Tables # for Tables.matrix conversion
 import TypedTables: Table, columnnames, getproperties, columns # import to extend
 using Unicode: normalize # To normalize string arguments
 
-export MISTBCGrid, MISTBCTable
+export MISTBCGrid, MISTBCTable, MISTChemistry, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH
 
 """ `NTuple{5, Symbol}` listing the dependent variables in the MIST BC grid. """
 const _mist_dependents = (:Teff, :logg, :feh, :Av, :Rv)
@@ -157,7 +158,58 @@ const zeropoints = MISTZeropoints(CSV.read(joinpath(@__DIR__, "zeropoints.txt"),
 # """
 # const filters = zeropoints.filter
 # @compat public filters
-                  
+
+##############################
+# Chemical mixture information
+""" Singleton struct representing the MIST chemical mixture model. No parameters.
+The module constant `MIST.chemistry` is an instance of this type. 
+MIST assumes the Asplund+2009 solar abundances. Sum of protostellar hydrogen, helium,
+metal mass fractions from last row of Table 4 sums to 0.9999, not 1 as it should.
+To keep calculations consistent, the protostellar values are normalized to sum to 1 here."""
+struct MISTChemistry <: AbstractChemicalMixture end
+const chemistry = MISTChemistry()
+X(::MISTChemistry) = 0.7154 / 0.9999
+X_phot(::MISTChemistry) = 0.7381
+Y(::MISTChemistry) = 0.2703 / 0.9999
+Y_phot(::MISTChemistry) = 0.2485
+Y_p(::MISTChemistry) = 0.249
+Z(::MISTChemistry) = 0.0142 / 0.9999
+Z_phot(::MISTChemistry) = 0.0134
+function Y(mix::MISTChemistry, Zval)
+    yp = Y_p(mix)
+    return yp + ((Y(mix) - yp) / Z(mix)) * Zval
+end
+function Y_phot(mix::MISTChemistry, Zval)
+    yp = Y_p(mix)
+    return yp + ((Y_phot(mix) - yp) / Z_phot(mix)) * Zval
+end
+function MH(mix::MISTChemistry, Zval)
+    Xval = X(mix, Zval)
+    solZ = Z(mix)
+    solX = X(mix)
+    # return log10(Zval / Xval) - log10(solZ / solX)
+    # Fuse expression into one log10 call for efficiency
+    return log10((Zval / Xval) * (solX / solZ))
+end
+function Z(mix::MISTChemistry, MHval)
+    # [M/H] = log(Z/X)-log(Z/X)☉ with Z☉ = solz
+    # Z/X = exp10( [M/H] + log(Z/X)☉ )
+    # X = 1 - Y - Z
+    # Y ≈ Y_p + ((Y☉ - Y_p) / Z☉) * Z (see Y above)
+    # so X ≈ 1 - (Y_p + ((Y☉ - Y_p) / Z☉) * Z) - Z = 1 - Y_p - (((Y☉ - Y_p) / Z☉) * Z) - Z
+    # Substitute into line 2,
+    # Z / (1 - Y_p - Z - (((Y☉ - Y_p) / Z☉) * Z)) = exp10( [M/H] + log(Z/X)☉ )
+    # Z = (1 - Y_p - Z - (((Y☉ - Y_p) / Z☉) * Z)) * exp10( [M/H] + log(Z/X)☉ )
+    # let A = exp10( [M/H] + log(Z/X)☉ )
+    # Z = (1 - Y_p - Z - (((Y☉ - Y_p) / Z☉) * Z)) * A
+    # Z = A - A * Y_p - A * Z - A * (((Y☉ - Y_p) / Z☉) * Z)
+    # Z + A * (((Y☉ - Y_p) / Z☉) * Z) + A * Z = A * (1 - Y_p)
+    # Z * (1 + A + A * ((Y☉ - Y_p) / Z☉)) = A * (1 - Y_p)
+    # Z = A * (1 - Y_p) / (1 + A + A * ((Y☉ - Y_p) / Z☉))
+    solX, solY, solZ, yp = X(mix), Y(mix), Z(mix), Y_p(mix)
+    zoverx = exp10(MHval + log10(solZ/solX))
+    return zoverx * (1 - yp) / (1 + zoverx + zoverx * ((solY - yp) / solZ))
+end
 
 #############################
 # Initialization and datadeps

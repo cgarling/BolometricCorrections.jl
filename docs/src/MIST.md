@@ -39,7 +39,8 @@ The constructor for `MISTBCGrid` includes a parser to translate most human-reada
 ```@example
 import DataDeps
 using BolometricCorrections.MIST
-println(keys(DataDeps.registry))
+# custom `show` call to prevent truncation of output # hide
+show(stdout, "text/plain", keys(DataDeps.registry))
 ```
 
 Once a BC grid has been constructed for a particular choice of photometric system, a BC table (with variables \[Fe/H\] and Av fixed) can be interpolated. 
