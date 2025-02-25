@@ -10,7 +10,8 @@ using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
 import CSV
-using DataDeps: register, DataDep, @datadep_str # registry contains list of registered datadeps
+using DataDeps: register, DataDep, @datadep_str
+using DataDeps: registry # contains list of registered datadeps
 # using DataInterpolations: PCHIPInterpolation # AbstractInterpolation, AkimaInterpolation, LinearInterpolation, CubicSpline, CubicHermiteSpline,
 using Interpolations: interpolate, Linear, Gridded # scale, BSpline
 # import HDF5 # not currently using
@@ -18,7 +19,7 @@ using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
 import Tar
 import Tables # for Tables.matrix conversion
-import TypedTables: Table, columnnames, getproperties, columns
+import TypedTables: Table, columnnames, getproperties, columns # import to extend
 using Unicode: normalize # To normalize string arguments
 
 export MISTBCGrid, MISTBCTable
@@ -214,32 +215,37 @@ struct MISTBCGrid{A,B,C <: AbstractString} <: AbstractBCGrid{A}
     end
 end
 function MISTBCGrid(grid::AbstractString)
-    # Normalize string argument (casefold=true makes lowercase)
-    grid = normalize(grid; casefold=true)
-    find_func = Base.Fix2(occursin, grid)
-    if find_func("jwst")
-        fname = mist_processed_fname(datadep"MIST_JWST")
-    # Cover multiple HST instruments gracefully
-    elseif find_func("hst")
-        if find_func("wfpc2")
-            fname = mist_processed_fname(datadep"MIST_HST_WFPC2")
-        elseif find_func("wfc3")
-            fname = mist_processed_fname(datadep"MIST_HST_WFC3")
-        elseif mapreduce(find_func, &, ("acs", "hrc"))
-            fname = mist_processed_fname(datadep"MIST_HST_ACS_HRC")
-        elseif mapreduce(find_func, &, ("acs", "wfc"))
-            fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
-        else # Name not fully specified, error
-            throw(ArgumentError("""Requested grid $grid unclear.
+    # If grid is in registry, don't enter parsing stage
+    if haskey(registry, grid)
+        fname = mist_processed_fname(@datadep_str(grid))
+    else # Parse `grid` string
+        # Normalize string argument (casefold=true makes lowercase)
+        grid = normalize(grid; casefold=true)
+        find_func = Base.Fix2(occursin, grid)
+        if find_func("jwst")
+            fname = mist_processed_fname(datadep"MIST_JWST")
+            # Cover multiple HST instruments gracefully
+        elseif find_func("hst")
+            if find_func("wfpc2")
+                fname = mist_processed_fname(datadep"MIST_HST_WFPC2")
+            elseif find_func("wfc3")
+                fname = mist_processed_fname(datadep"MIST_HST_WFC3")
+            elseif mapreduce(find_func, &, ("acs", "hrc"))
+                fname = mist_processed_fname(datadep"MIST_HST_ACS_HRC")
+            elseif mapreduce(find_func, &, ("acs", "wfc"))
+                fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
+            else # Name not fully specified, error
+                throw(ArgumentError("""Requested grid $grid unclear.
                                    Supported HST bolometric correction grids are "hst_acs_wfc" for the
                                    ACS Wide Field Channel, "hst_acs_hrc" for the ACS High-Resolution
                                    Channel, "hst_wfpc2" for the Wide Field and Planetary Camera 2,
                                    and "hst_wfc3" for the Wide Field Camera 3."""))
+            end
         end
     end
     return MISTBCGrid(read_mist_bc_processed(fname), fname)
 end
-(grid::MISTBCGrid)(feh::Real, Av::Real) = MISTBCTable(feh, Av, grid)
+(grid::MISTBCGrid)(feh::Real, Av::Real) = MISTBCTable(grid, feh, Av)
 Base.show(io::IO, z::MISTBCGrid) = print(io, "MIST bolometric correction grid for photometric system ",
                                          splitpath(splitext(z.filename)[1])[end])
 Table(grid::MISTBCGrid) = grid.table
@@ -301,7 +307,7 @@ function repack_submatrix(submatrix::AbstractArray{T},
     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
 end
 """
-    MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
+    MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
 
 Interpolates the MIST bolometric corrections in `grid` to a fixed value of \\[Fe/H\\]
 (`feh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
@@ -314,14 +320,14 @@ Examples
 julia> grid = MISTBCGrid("JWST")
 MIST bolometric correction grid for photometric system MIST_JWST
 
-julia> table = MISTBCTable(-1.01, 0.011, grid)
+julia> table = MISTBCTable(grid, -1.01, 0.011)
 MIST bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(2755, 0.01)) == 29 # Returns BC in each filter
 true
 ```
 """
-function MISTBCTable(feh::Real, Av::Real, grid::MISTBCGrid)
+function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
     check_vals(feh, Av)
     filters = filternames(grid)
     table = Table(grid)
