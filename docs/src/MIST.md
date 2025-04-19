@@ -50,7 +50,7 @@ MISTBCTable
 ```
 
 ## Photometric Zeropoints
-The MIST bolometric corrections assume a bolometric luminosity zeropoint of ``3.0128 \times 10^{35} \, \text{erg} \, \text{s}^{-1}`` to define ``M_\text{bol} = 0``. This is equivalent to adopting solar values of ``M_\text{bol} = 4.74`` mag and solar bolometric luminosity of ``3.828 \times 10^{33} \, \text{erg} \, \text{s}^{-1}``.
+The MIST bolometric corrections assume a bolometric luminosity zeropoint of ``3.0128 \times 10^{35} \, \text{erg} \, \text{s}^{-1}`` to define ``M_\text{bol} = 0``. This is equivalent to adopting solar values for the bolometric magnitude of ``M_\text{bol} = 4.74`` mag with bolometric luminosity of ``3.828 \times 10^{33} \, \text{erg} \, \text{s}^{-1}``.
 
 Information needed to convert between different photometric systems (AB, Vega, ST) is contained in [`BolometricCorrections.MIST.zeropoints`](@ref), which is an instance of the [`BolometricCorrections.MIST.MISTZeropoints`](@ref) type. Additional information on operations supported by this type is available in our [API documentation](@ref zpt_api).
 
