@@ -8,6 +8,7 @@ for feh in MIST.gridinfo.feh
     for Av in MIST.gridinfo.Av
         subtable = MIST.select_subtable(Table(table), feh, Av)
         @test length(subtable) == length(MIST.gridinfo.Teff) * length(MIST.gridinfo.logg)
-        @test all(@. subtable.feh == feh && subtable.Av == Av)
+        # @test all(@. subtable.feh == feh && subtable.Av == Av) # Not working on julia 1.6
+        @test all(@. (subtable.feh == feh) & (subtable.Av == Av))
     end
 end
