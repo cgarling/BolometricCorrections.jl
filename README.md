@@ -1,5 +1,11 @@
 # BolometricCorrections.jl
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://cgarling.github.io/BolometricCorrections.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://cgarling.github.io/BolometricCorrections.jl/dev/)
+[![Build Status](https://github.com/cgarling/BolometricCorrections.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/cgarling/BolometricCorrections.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/cgarling/BolometricCorrections.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/cgarling/BolometricCorrections.jl)
+
+
 **THIS PACKAGE IS PRE-RELEASE**
 
 Provides access to and interpolation of pre-computed grids of bolometric corrections. Currently supported BC grids are
