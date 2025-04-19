@@ -18,6 +18,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [compat]
+ArgCheck = "1, 2"
 CSV = "0.10"
 CodecXz = "0.7"
 Compat = "3.47, 4.10"
