@@ -7,6 +7,7 @@ module MIST
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
     interp1d, interp2d
 import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH
+
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
 using Compat: @compat # for @compat public <x>
@@ -14,7 +15,7 @@ import CSV
 using DataDeps: register, DataDep, @datadep_str
 using DataDeps: registry # contains list of registered datadeps
 # using DataInterpolations: PCHIPInterpolation # AbstractInterpolation, AkimaInterpolation, LinearInterpolation, CubicSpline, CubicHermiteSpline,
-using Interpolations: interpolate, Linear, Gridded # scale, BSpline
+using Interpolations: interpolate, Linear, Gridded, extrapolate, Flat # scale, BSpline
 # import HDF5 # not currently using
 using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
@@ -423,6 +424,7 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
             itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                               repack_submatrix(submatrix, filters),
                               Gridded(Linear()))
+            itp = extrapolate(itp, Flat())
             return MISTBCTable(feh, Av, itp, filters)
         else
             # Identify nearest [Fe/H] and Av values in the table;
@@ -456,6 +458,7 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
             itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
                               repack_submatrix(submatrix, filters),
                               Gridded(Linear()))
+            itp = extrapolate(itp, Flat())
             return MISTBCTable(feh, Av, itp, filters)
         end
     end
