@@ -16,7 +16,9 @@ include("interp.jl")
 #################################
 # Bolometric correction grid API
 
-""" `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. """
+""" `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. Generally, concrete subtypes should be callable with population properties (e.g., metallicity, reddening, etc.) to interpolate the full grid to these properties, returning a concrete subtype of [`BolometricCorrections.AbstractBCTable`](@ref). As different grids will have different population properties available (e.g., some support different α-element abundances in addition to total metallicity), the call signature to interpolate the grid is specific for each concrete subtype, which include
+ - [`MISTBCGrid`](@ref)
+"""
 abstract type AbstractBCGrid{T <: Real} end
 Base.eltype(::AbstractBCGrid{T}) where T = T
 """
