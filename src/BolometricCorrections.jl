@@ -314,7 +314,7 @@ function MH(mix::AbstractChemicalMixture, Z) end
 #################################
 # Top-level API exports
 export Table, columnnames, columns, getproperties, filternames, vegamags,
-    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, MH_phot, chemistry
+    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
 include("YBC/YBC.jl")
