@@ -189,21 +189,45 @@ function Lbol(zpt::AbstractZeropoints) end
 
 #################################
 # Chemical mixture API
+
 """ `AbstractChemicalMixture` is the abstract supertype for information regarding the
 chemical mixtures available or assumed for a particular grid of bolometric corrections.
 It also supports evaluation and conversion between different chemical conventions
 (i.e., conversion between metal mass fraction [`Z`](@ref) and logarithmic metallicity
 [\\[M/H\\]](@ref MH)). """
 abstract type AbstractChemicalMixture end
+Base.Broadcast.broadcastable(t::AbstractChemicalMixture) = Ref(t)
+
+"""
+    chemistry(mix::AbstractBCTable)
+    chemistry(mix::AbstractBCGrid)
+Returns the correct concrete instance of `AbstractChemicalMixture` for the
+provided bolometric correction grid or table. This provides a convenient 
+programmatic way to obtain this chemical information.
+
+# Examples
+```jldoctest
+julia> grid = MISTBCGrid("JWST");
+
+julia> chemistry(grid)
+BolometricCorrections.MIST.MISTChemistry()
+
+julia> table = grid(-1.5, 0.03);
+
+julia> chemistry(table)
+BolometricCorrections.MIST.MISTChemistry()
+```
+"""
+function chemistry(mix::AbstractBCTable) end
 
 """
     X(mix::AbstractChemicalMixture)
-Returns the **protostellar** hydrogen mass fraction assumed in the provided chemical mixture.
+Returns the **protostellar** solar hydrogen mass fraction assumed in the provided chemical mixture.
 """
 function X(mix::AbstractChemicalMixture) end
 """
     X_phot(mix::AbstractChemicalMixture)
-Returns the **photospheric** hydrogen mass fraction assumed in the provided chemical mixture.
+Returns the **photospheric** solar hydrogen mass fraction assumed in the provided chemical mixture.
 """
 function X_phot(mix::AbstractChemicalMixture) end
 """
@@ -213,15 +237,6 @@ provided chemical mixture. Generic method returns `1 - Y(mix, Z) - Z`.
 """
 function X(mix::AbstractChemicalMixture, Z)
     Yval = Y(mix, Z)
-    return 1 - Yval - Z
-end
-"""
-    X_phot(mix::AbstractChemicalMixture, Z_phot)
-Returns **photospheric** hydrogen mass fraction given the photospheric metal mass `Z` and the
-provided chemical mixture. Generic method returns `1 - Y_phot(mix, Z_phot) - Z_phot`. 
-"""
-function X_phot(mix::AbstractChemicalMixture, Z)
-    Yval = Y_phot(mix, Z)
     return 1 - Yval - Z
 end
 
@@ -242,16 +257,10 @@ Returns the **photospheric** solar helium mass fraction. May use [`Z_phot`] inte
 function Y_phot(mix::AbstractChemicalMixture) end
 """
     Y(mix::AbstractChemicalMixture, Z)
-Returns the **protostellar** solar helium mass fraction given the protostellar metal mass
+Returns the **protostellar** helium mass fraction given the protostellar metal mass
 fraction `Z`. Only valid for grids in which ``Y`` is a function of ``Z``.
 """
 function Y(mix::AbstractChemicalMixture, Z) end
-"""
-    Y_phot(mix::AbstractChemicalMixture, Z_phot)
-Returns the **photospheric** solar helium mass fraction given the photospheric metal mass
-fraction `Z_phot`. Only valid for grids in which ``Y`` is a function of ``Z``.
-"""
-function Y_phot(mix::AbstractChemicalMixture, Z) end
 
 """
     Z(mix::AbstractChemicalMixture)
@@ -260,7 +269,7 @@ Returns the **protostellar** solar metal mass fraction assumed in the provided c
 function Z(mix::AbstractChemicalMixture) end
 """
     Z(mix::AbstractChemicalMixture, MH)
-Returns the **protostellar** solar metal mass fraction given the logarithmic metallicity `MH`
+Returns the **protostellar** metal mass fraction given the logarithmic metallicity `MH`
 and the provided chemical mixture. 
 """
 function Z(mix::AbstractChemicalMixture, MH) end
@@ -270,15 +279,9 @@ Returns the **photospheric** solar metal mass fraction assumed in the provided c
 """
 function Z_phot(mix::AbstractChemicalMixture) end
 """
-    Z_phot(mix::AbstractChemicalMixture, MH)
-Returns the **photospheric** solar metal mass fraction given the logarithmic metallicity `MHval`
-and the provided chemical mixture.
-"""
-function Z_phot(mix::AbstractChemicalMixture, MH) end
-"""
     MH(mix::AbstractChemicalMixture, Z)
-Returns the protostellar logarithmic metallicity \\[M/H\\] given the metal mass fraction `Z`
-and the provided chemical mixture.
+Returns the **protostellar** logarithmic metallicity [M/H] = log10(Z/X) - log10(Z⊙/X⊙)
+given the metal mass fraction `Z` and the provided chemical mixture.
 """
 function MH(mix::AbstractChemicalMixture, Z) end
 # """
@@ -311,7 +314,7 @@ function MH(mix::AbstractChemicalMixture, Z) end
 #################################
 # Top-level API exports
 export Table, columnnames, columns, getproperties, filternames, vegamags,
-    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH
+    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, MH_phot, chemistry
 
 # Include submodules
 include("YBC/YBC.jl")

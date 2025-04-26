@@ -11,10 +11,8 @@ const chem = MISTChemistry()
 @test X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1
 
 @test X(chem, Z(chem)) ≈ X(chem) # rtol=rtol
-@test X_phot(chem, Z_phot(chem)) ≈ X_phot(chem) # rtol=rtol
 
 @test Y(chem, Z(chem)) ≈ Y(chem)
-@test Y_phot(chem, Z_phot(chem)) ≈ Y_phot(chem)
 
 @test MH(chem, 1e-4) ≈ -2.173234648003277 # rtol=rtol
 @test MH(chem, Z(chem, 0.5)) ≈ 0.5 # rtol=rtol
