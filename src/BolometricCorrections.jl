@@ -311,9 +311,6 @@ export Table, columnnames, columns, getproperties, filternames, zeropoints, vega
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
-include("YBC/YBC.jl")
-using .YBC
-# exports from YBC
 include("MIST/MIST.jl")
 using .MIST
 @compat public MIST
