@@ -48,7 +48,7 @@ using BolometricCorrections.MIST
 show(stdout, "text/plain", keys(DataDeps.registry))
 ```
 
-Once a BC grid has been constructed for a particular choice of photometric system, a BC table (with variables \[Fe/H\] and Av fixed) can be interpolated. 
+Each of these photometric systems utilizes a different data file. Each time you request a BC grid for photometric system you haven't yet downloaded, you will be prompted to allow download of the new data. Once a BC grid has been constructed for a particular choice of photometric system, a BC table (with variables \[Fe/H\] and Av fixed) can be interpolated. 
 
 ```@docs
 MISTBCTable
