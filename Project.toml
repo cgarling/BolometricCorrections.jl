@@ -33,7 +33,7 @@ Tar = "<0.0.1, 1"
 Test = "<0.0.1, 1"
 TypedTables = "1"
 Unicode = "<0.0.1, 1"
-julia = "1.6"
+julia = "1.7"
 
 [extras]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
