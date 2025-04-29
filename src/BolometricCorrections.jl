@@ -218,7 +218,6 @@ Returns the correct concrete instance of `AbstractChemicalMixture` for the
 provided bolometric correction grid or table. This provides a convenient 
 programmatic way to obtain this chemical information.
 
-# Examples
 ```jldoctest
 julia> grid = MISTBCGrid("JWST");
 

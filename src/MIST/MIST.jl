@@ -202,7 +202,6 @@ This type is used to create instances of [`MISTBCTable`](@ref) that have fixed d
 grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of
 `MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
 
-Examples
 ```jldoctest
 julia> grid = MISTBCGrid("JWST")
 MIST bolometric correction grid for photometric system MIST_JWST
@@ -363,7 +362,6 @@ variables (the MIST BCs have only one `Rv` value). Returns an instance that is c
 with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function
 of temperature and surface gravity.
 
-Examples
 ```jldoctest
 julia> grid = MISTBCGrid("JWST")
 MIST bolometric correction grid for photometric system MIST_JWST
@@ -470,7 +468,6 @@ MIST assumes the *protostellar* [Asplund2009](@citet) solar abundances. Sum of p
 metal mass fractions from last row of Table 4 sums to 0.9999, not 1 as it should.
 To keep calculations consistent, the protostellar values are normalized to sum to 1 here.
 
-# Examples
 ```jldoctest
 julia> using BolometricCorrections.MIST: MISTChemistry, X, Y, Z, X_phot, Y_phot, Z_phot,
                                          MH;
