@@ -296,28 +296,10 @@ Returns the **protostellar** logarithmic metallicity [M/H] = log10(Z/X) - log10(
 given the metal mass fraction `Z` and the provided chemical mixture.
 """
 function MH(mix::AbstractChemicalMixture, Z) end
-# """
-#     Z(mix::AbstractChemicalMixture)
-# Returns the **protostellar** solar metal mass fraction assumed in the provided chemical mixture model.
-# There is a difference between photospheric abundances and protostellar abundances as metals diffuse
-# out of the photosphere over time, leading the photospheric abundances to be lower than protostellar
-# abundances. [`Z_phot`](@ref) returns the photospheric metal mass fraction if the model distinguishes
-# between these abundances -- otherwise it falls back to this method. At least one of `(Z, Z_phot)` 
-# should always be implemented.
-# """
 # function Z(mix::T) where T <: AbstractChemicalMixture
 #     @warn "Requested solar protostellar metal mass for chemical mixture model $T. This model does not have a `Z` method implemented, so we are falling back to the photospheric metal mass fraction `Z_phot(mix)`." maxlog=1
 #     return Z_phot(mix) # Fallback for unimplemented Z
 # end
-# """
-#     Z_phot(mix::AbstractChemicalMixture)
-# Returns the **photospheric** solar metal mass fraction assumed in the provided chemical mixture model.
-# There is a difference between photospheric abundances and protostellar abundances as metals diffuse
-# out of the photosphere over time, leading the photospheric abundances to be lower than protostellar
-# abundances. [`Z`](@ref) returns the protostellar metal mass fraction if the model distinguishes
-# between these abundances -- otherwise it falls back to this method. At least one of `(Z, Z_phot)` 
-# should always be implemented.
-# """
 # function Z_phot(mix::T) where T <: AbstractChemicalMixture
 #     @warn "Requested solar photospheric metal mass for chemical mixture model $T. This model does not have a `Z_phot` method implemented, so we are falling back to the protostellar metal mass fraction `Z(mix)`." maxlog=1
 #     return Z(mix) # Fallback for unimplemented Z_phot
