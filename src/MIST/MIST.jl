@@ -5,8 +5,9 @@ module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
-    interp1d, interp2d
-import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
+                               interp1d, interp2d
+import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot, Y, Y_phot,
+                                Z, Z_phot, MH, chemistry
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -223,7 +224,7 @@ function MISTBCGrid(grid::AbstractString)
         # Normalize string argument (casefold=true makes lowercase)
         grid = normalize(grid; casefold=true)
         find_func = Base.Fix2(occursin, grid)
-        if find_func("jwst")
+        if find_func("jwst") # Only contains NIRCam looks like
             fname = mist_processed_fname(datadep"MIST_JWST")
             # Cover multiple HST instruments gracefully
         elseif find_func("hst")
@@ -236,12 +237,53 @@ function MISTBCGrid(grid::AbstractString)
             elseif mapreduce(find_func, &, ("acs", "wfc"))
                 fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
             else # Name not fully specified, error
-                throw(ArgumentError("""Requested grid $grid unclear.
-                                   Supported HST bolometric correction grids are "hst_acs_wfc" for the
-                                   ACS Wide Field Channel, "hst_acs_hrc" for the ACS High-Resolution
-                                   Channel, "hst_wfpc2" for the Wide Field and Planetary Camera 2,
+                throw(ArgumentError("""Requested grid "$grid" unclear.
+                                   Supported HST bolometric correction grids are "hst_acs_wfc" for the \
+                                   ACS Wide Field Channel, "hst_acs_hrc" for the ACS High-Resolution \
+                                   Channel, "hst_wfpc2" for the Wide Field and Planetary Camera 2, \
                                    and "hst_wfc3" for the Wide Field Camera 3."""))
             end
+        elseif find_func("lsst")
+            fname = mist_processed_fname(datadep"MIST_LSST")
+        elseif find_func("wise")
+            fname = mist_processed_fname(datadep"MIST_WISE")
+        elseif find_func("washington")
+            fname = mist_processed_fname(datadep"MIST_Washington")
+        elseif find_func("swift")
+            fname = mist_processed_fname(datadep"MIST_Swift")
+        elseif find_func("panstarrs")
+            fname = mist_processed_fname(datadep"MIST_PanSTARRS")
+        elseif find_func("megacam")
+            fname = mist_processed_fname(datadep"MIST_CFHT_MegaCam")
+        elseif find_func("skymapper")
+            fname = mist_processed_fname(datadep"MIST_SkyMapper")
+        elseif find_func("uvit")
+            fname = mist_processed_fname(datadep"MIST_UVIT")
+        elseif find_func("ukidss")
+            fname = mist_processed_fname(datadep"MIST_UKIDSS")
+        elseif find_func("vista")
+            fname = mist_processed_fname(datadep"MIST_VISTA")
+        elseif mapreduce(find_func, |, ("johnson", "cousins", "bessell", "2mass", "kepler", "hipparcos", "tycho",
+                                        "gaia", "tess"))
+            fname = mist_processed_fname(datadep"MIST_UBVRIplus")
+        elseif find_func("hsc")
+            fname = mist_processed_fname(datadep"MIST_HSC")
+        elseif find_func("spitzer")
+            fname = mist_processed_fname(datadep"MIST_Spitzer")
+        elseif mapreduce(find_func, |, ("sdss", "sloan"))
+            fname = mist_processed_fname(datadep"MIST_SDSS")
+        elseif find_func("galex")
+            fname = mist_processed_fname(datadep"MIST_GALEX")
+        elseif find_func("iphas")
+            fname = mist_processed_fname(datadep"MIST_IPHAS")
+        elseif mapreduce(find_func, |, ("splus", "s+"))
+            fname = mist_processed_fname(datadep"MIST_SPLUS")
+        elseif mapreduce(find_func, |, ("wfirst", "roman")) # based on May 2018 preliminary filter set
+            @info """The WFIRST (now the Nancy Grace Roman Telescope) bolometric corrections are based \
+                     on a preliminary filter set from 2018."""
+            fname = mist_processed_fname(datadep"MIST_WFIRST")
+        elseif find_func("decam")
+            fname = mist_processed_fname(datadep"MIST_DECam")
         end
     end
     return MISTBCGrid(read_mist_bc_processed(fname), fname)
