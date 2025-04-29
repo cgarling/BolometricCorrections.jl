@@ -25,6 +25,7 @@ getproperties(::BolometricCorrections.AbstractBCTable, ::Tuple{Vararg{Symbol}})
 ## [Photometric Zeropoints API](@id zpt_api)
 ```@docs
 BolometricCorrections.AbstractZeropoints
+zeropoints
 filternames(::BolometricCorrections.AbstractZeropoints)
 vegamags
 abmags

@@ -6,8 +6,8 @@ module MIST
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
                                interp1d, interp2d
-import ..BolometricCorrections: filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot, Y, Y_phot,
-                                Z, Z_phot, MH, chemistry
+import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
+                                 Y, Y_phot, Z, Z_phot, MH, chemistry
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -54,7 +54,7 @@ const gridinfo = (Teff = _mist_Teff,
 @compat public gridinfo
 
 """ Struct to contain the MIST zeropoint information.
-A constant instance is available as [`BolometricCorrections.MIST.zeropoints`](@ref).
+A constant instance is available as [`BolometricCorrections.MIST.zpt`](@ref).
 Instances are callable with a `filtername::AbstractString` which will return
 the zeropoint entry for the relevant filter. The full table can be retrieved
 with `Table(zpt)` and the list of available filters can be retrieved with
@@ -126,6 +126,11 @@ Mbol(::MISTZeropoints) = 4.74
 Lbol(::MISTZeropoints) = 3.828e33
 
 """
+This constant is an instance of [`MISTZeropoints`](@ref BolometricCorrections.MIST.MISTZeropoints).
+See the docs for more informations on supported operations.
+This constant is returned when calling [`zeropoints`](@ref) on instances of [`MIST.MISTBCGrid`](@ref)
+and [`MIST.MISTBCTable`](@ref).
+
 Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
 For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
 one line for each filter in our collection. The contents of the file can be used to convert
@@ -143,22 +148,20 @@ For example, a star with WISE\\_W1(Vega) = 0.0 would have WISE\\_W1(AB) = 2.66.
 To ease compatibility between `Symbol` and `String` representations, the
 mag(Vega/ST) and mag(Vega/AB) columns have been simplified to VegaST and VegaAB.
 
-This constant is an instance of [`MISTZeropoints`](@ref BolometricCorrections.MIST.MISTZeropoints);
-see the docs for more informations on supported operations.
 """
-const zeropoints = MISTZeropoints(CSV.read(joinpath(@__DIR__, "zeropoints.txt"),
-                                           Table; # header=1,
-                                           header=[:filter, :system, :VegaST, :VegaAB], skipto=2,
-                                           delim=' ', ignorerepeated=true))
+const zpt = MISTZeropoints(CSV.read(joinpath(@__DIR__, "zeropoints.txt"),
+                                    Table; # header=1,
+                                    header=[:filter, :system, :VegaST, :VegaAB], skipto=2,
+                                    delim=' ', ignorerepeated=true))
 # const zeropoints = CSV.read(joinpath(@__DIR__, "zeropoints.txt"), Table; header=1, delim=' ', ignorerepeated=true)
-@compat public zeropoints
+@compat public zpt
 
-# Might be nice to have zeropoints be a namedtuple, something like
-# NamedTuple{Tuple(Symbol(i) for i in BolometricCorrections.MIST.zeropoints.filter)}(NamedTuple{keys(row)[2:end]}(values(row)[2:end]) for row in rows(BolometricCorrections.MIST.zeropoints))
+# Might be nice to have zpt be a namedtuple, something like
+# NamedTuple{Tuple(Symbol(i) for i in BolometricCorrections.MIST.zpt.filter)}(NamedTuple{keys(row)[2:end]}(values(row)[2:end]) for row in rows(BolometricCorrections.MIST.zpt))
 # """
 # All filters available in the MIST BC grid.
 # """
-# const filters = zeropoints.filter
+# const filters = zpt.filter
 # @compat public filters
 
 #############################
@@ -302,6 +305,7 @@ function Base.extrema(grid::MISTBCGrid)
 end
 # filternames(grid::MISTBCGrid) = [string(name) for name in columnnames(grid)[6:end]]
 filternames(grid::MISTBCGrid) = columnnames(grid)[length(_mist_dependents)+1:end]
+zeropoints(::MISTBCGrid) = zpt
 
 
 #########################################################
@@ -316,6 +320,7 @@ MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)...
 Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ",
                                           z.feh, " and V-band extinction ", z.Av)
 filternames(table::MISTBCTable) = table.filters
+zeropoints(::MISTBCTable) = zpt
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg
 Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.knots[2]), logg = extrema(table.itp.knots[1]))

@@ -148,6 +148,19 @@ conversion between systems (AB, Vega, ST). """
 abstract type AbstractZeropoints end # {T <: Real} end
 
 """
+    zeropoints(grid::AbstractBCGrid)
+    zeropoints(table::AbstractBCTable)
+
+Return the correct concrete instance of [`AbstractZeropoints`](@ref BolometricCorrections.AbstractZeropoints)
+for the type of `grid` or `table`.
+
+```jldoctest
+julia> zeropoints(MISTBCGrid("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
+true
+```
+"""
+function zeropoints(grid::AbstractBCGrid) end
+"""
     vegamags(zpt::AbstractZeropoints, filter, mags)
 
 Uses the photometric zeropoint information in `zpt` to convert magnitudes `mags`
@@ -313,7 +326,7 @@ function MH(mix::AbstractChemicalMixture, Z) end
 
 #################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, filternames, vegamags,
+export Table, columnnames, columns, getproperties, filternames, zeropoints, vegamags,
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
