@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/cgarling/BolometricCorrections.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/cgarling/BolometricCorrections.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/cgarling/BolometricCorrections.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/cgarling/BolometricCorrections.jl)
 
-Provides access to and interpolation of pre-computed grids of [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction). See our documentation linked in the badges above for additional information. Currently supported BC grids are
+Provides access to and interpolation of pre-computed grids of [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction). See our documentation linked in the badges above for additional information. Currently supported bolometric correction grids are
 
  - [MIST](https://waps.cfa.harvard.edu/MIST/)
 
