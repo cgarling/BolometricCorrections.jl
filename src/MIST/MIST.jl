@@ -385,10 +385,6 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
         subtable = select_subtable(table, feh, Av)
         # Need to repack the subtable into the correct format for interpolation
         submatrix = Tables.matrix(getproperties(subtable, filters))
-        itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                          repack_submatrix(submatrix, filters),
-                          Gridded(Linear()))
-        return MISTBCTable(feh, Av, itp, filters)
     else
         # Need to interpolate table to correct [Fe/H] and Av
         # Doing basic bilinear interpolation on the matrix representation
@@ -402,10 +398,6 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
             # submatrix = @. mat1 * (Av2 - Av) / (Av2 - Av1) + mat2 * (Av - Av1) / (Av2 - Av1) # Equivalent, bit slower
             # submatrix = @. (mat1 * (Av2 - Av) + mat2 * (Av - Av1)) / (Av2 - Av1)
             submatrix = interp1d(Av, Av1, Av2, mat1, mat2)
-            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                              repack_submatrix(submatrix, filters),
-                              Gridded(Linear()))
-            return MISTBCTable(feh, Av, itp, filters)
         elseif Av ∈ _mist_Av
             feh_idx = searchsortedfirst(SVector(_mist_feh), feh) - 1
             feh1, feh2 = _mist_feh[feh_idx], _mist_feh[feh_idx + 1]
@@ -414,11 +406,6 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
             mat2 = Tables.matrix(getproperties(select_subtable(table, feh2, Av), filters))
             # submatrix = @. (mat1 * (feh2 - feh) + mat2 * (feh - feh1)) / (feh2 - feh1)
             submatrix = interp1d(feh, feh1, feh2, mat1, mat2)
-            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                              repack_submatrix(submatrix, filters),
-                              Gridded(Linear()))
-            itp = extrapolate(itp, Flat())
-            return MISTBCTable(feh, Av, itp, filters)
         else
             # Identify nearest [Fe/H] and Av values in the table;
             # all dependent variables are interated in sorted order
@@ -446,15 +433,14 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
             #                         # [mat1_1, mat1_2, mat2_1, mat2_2],
             #                         bigmat,
             #                         Gridded(Linear()))(feh, Av)
-
-            # Construct interpolator and return MISTBCTable
-            itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                              repack_submatrix(submatrix, filters),
-                              Gridded(Linear()))
-            itp = extrapolate(itp, Flat())
-            return MISTBCTable(feh, Av, itp, filters)
         end
     end
+    # Construct interpolator and return MISTBCTable
+    itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
+                      repack_submatrix(submatrix, filters),
+                      Gridded(Linear()))
+    itp = extrapolate(itp, Flat())
+    return MISTBCTable(feh, Av, itp, filters)
 end
 (table::MISTBCTable)(Teff::Real, logg::Real) = table.itp(logg, Teff)
 # to broadcast over both teff and logg, you do table.(teff, logg')
