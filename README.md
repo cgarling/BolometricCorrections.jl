@@ -17,7 +17,7 @@ This package is registered to Julia's General registry and can be installed via 
 
 ```julia
 import Pkg;
-Pkg.add("StarFormationHistories");
+Pkg.add("BolometricCorrections");
 ```
 
 ## Example Usage
