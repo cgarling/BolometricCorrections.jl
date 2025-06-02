@@ -371,6 +371,14 @@ MIST bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(2755, 0.01)) == 29 # Returns BC in each filter
 true
+
+julia> size(table([2755, 2756], [0.01, 0.02])) # `table(array, array)` is also supported
+(29, 2)
+
+julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
+
+julia> table(Table, [2755, 2756], [0.01, 0.02]) isa Table
+true
 ```
 """
 function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
