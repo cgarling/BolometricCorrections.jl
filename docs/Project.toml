@@ -3,9 +3,11 @@ DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 DataDeps = "0.7"
 Documenter = "1"
 DocumenterCitations = "1"
 PyPlot = "2"
+TypedTables = "1"
