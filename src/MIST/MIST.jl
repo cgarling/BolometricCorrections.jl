@@ -187,7 +187,7 @@ end
 
 # Read a MIST BC file post-processed in init.jl into Table
 function read_mist_bc_processed(fname::AbstractString)
-    return CSV.read(fname, Table)
+    return CSV.read(fname, Table; buffer_in_memory=true) # decompress in memory
 end
 # Given a datadep path, return path to post-processed file
 mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fname))*".gz")
