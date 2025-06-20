@@ -1,9 +1,12 @@
 # Extract xz compressed tar (.txz)
 function unpack_txz(fname::AbstractString, dir::AbstractString)
-    txz = open(fname)
-    tar = XzDecompressorStream(txz)
-    Tar.extract(tar, String(dir))
-    close(tar)
+    # txz = open(fname)
+    # tar = XzDecompressorStream(txz)
+    # Tar.extract(tar, String(dir))
+    # close(tar)
+    open(XzDecompressorStream, fname) do stream
+        Tar.extract(stream, String(dir))
+    end
 end
 
 # Given the filename of a MIST BC set, return a vector containing
