@@ -54,7 +54,9 @@ end
 """
     pull_table(f::AbstractString, prefix::AbstractString="YBC")
 
-Pull files from YBC repository corresponding to filter system `f` which must correspond to a valid subdirectory in `joinpath(ybc_tables, prefix)`. Available `prefix` entries (as of 2025-07-09) are "YBC" (for standard BCs), "rYBC" (BC tables for rotating stars), and "iYBC" (the limb darkening coefficients with Kurucz libraries.)
+Pull files from YBC repository corresponding to filter system `f` which must correspond to a valid subdirectory in `joinpath(ybc_tables, prefix)`. Available `prefix` entries (as of 2025-07-09) are "YBC" (for standard BCs), "rYBC" (BC tables for rotating stars), and "iYBC" (the limb darkening coefficients with Kurucz libraries).
+
+Returns absolute path to the pulled files.
 """
 function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
     f = String(f)
@@ -79,7 +81,7 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
         remove_table(f, prefix)
         throw(ArgumentError("Requested filter system $f invalid; available systems are $systems."))
     end
-    return nothing
+    return joinpath(repo, prefix, f)
 end
 
 """
