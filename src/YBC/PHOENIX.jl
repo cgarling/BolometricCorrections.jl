@@ -8,7 +8,7 @@ module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable
 import ...BolometricCorrections: zeropoints, filternames, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: pull_table, parse_filterinfo
+using ..YBC: pull_table, parse_filterinfo, check_prefix
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -50,6 +50,23 @@ function _parse_filename(f::AbstractString)
     return (MH = parse(Float64, mh), α_fe = parse(Float64, α_fe))
 end
 
+"""
+    check_vals(mh, Av)
+
+Validate that [M/H] value `mh` and ``A_V`` value `Av` are valid for the YBC PHOENIX BC grid.
+Throws `DomainError` if check fails, returns `nothing` if check is successful.
+"""
+function check_vals(mh, Av)
+    mh_ext = extrema(gridinfo.MH)
+    if mh < first(mh_ext) || mh > last(mh_ext)
+        throw(DomainError(mh, "Provided [M/H] $mh is outside the bounds for the YBC PHOENIX BC tables $mh_ext"))
+    end
+    Av_ext = extrema(gridinfo.Av)
+    if Av < first(Av_ext) || Av > last(Av_ext)
+        throw(DomainError(Av, "Provided A_v $Av is outside the bounds for the YBC PHOENIX BC tables $Av_ext"))
+    end
+end
+
 #########################################################
 # A single BC table, with fixed [M/H] and Av
 struct PHOENIXYBCTable{A <: Real, B, N} <: AbstractBCTable{A}
@@ -72,18 +89,23 @@ zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
 # We will just use the hard-coded grid bounds; extremely fast
 Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)))
+# Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
+    check_prefix(prefix)
     @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use YBCPHOENIXGrid for grid interpolation."
     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use YBCPHOENIXGrid for grid interpolation."
     path = pull_table(String(grid), String(prefix))
     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
+    if length(files) == 0
+        error("""No files found for grid $grid in the given YBC directory $prefix. prefix="YBC" has the greatest number of filters and is recommended.""")
+    end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
     filternames = filterinfo.names
 
-    # Figure out which file we need for given mh
+    # Figure out which file we need for given [M/H]
     goodfile = files[findfirst(≈(mh), _parse_filename(file).MH for file in files)]
     # Figure out FITS file column name for given Av
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
@@ -98,15 +120,19 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
 end
 
 # function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
+#     check_prefix(prefix)
 #     path = pull_table(String(grid), String(prefix))
 #     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
+#     if length(files) == 0
+#         error("""No files found for grid $grid in the given YBC directory $prefix. prefix="YBC" has the greatest number of filters and is recommended.""")
+#     end
 #     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
 #     filternames = filterinfo.names
 #     return files
 #     # Dependent variables "logTeff", "logg" should be the same for all
 #     # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
 #     # we just need to form an array with all the relevant BCs that we can then
-#     # interpolate between. 
+#     # interpolate between.
 # end
 
 end # module

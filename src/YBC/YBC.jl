@@ -23,6 +23,9 @@ function parse_filterinfo(f::AbstractString)
     # types=[Int, String, String, dtype, dtype, dtype, String, String, dtype, Int, String])
 end
 
+# Presently only supporting the standard YBC BCs, non-rotating
+check_prefix(prefix) = prefix != "YBC" ? throw(ArgumentError("""prefix = $prefix not presently supported -- use "YBC".""")) : return nothing
+
 include("PHOENIX.jl")
 using .PHOENIX
 @compat public PHOENIX
