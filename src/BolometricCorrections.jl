@@ -311,12 +311,14 @@ export Table, columnnames, columns, getproperties, filternames, zeropoints, vega
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
-include("MIST/MIST.jl")
+include(joinpath("MIST", "MIST.jl"))
 using .MIST
 @compat public MIST
 export MISTBCGrid, MISTBCTable
-# exports from MIST
 
+include(joinpath("YBC", "YBC.jl"))
+using .YBC
+@compat public YBC
 
 
 end # module
