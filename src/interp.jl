@@ -36,14 +36,20 @@ end
 # Use statically known size from filters argument to repack submatrix
 # into a vector of SVectors to pass into interpolator
 """
-
+repack_submatrix(submatrix::AbstractArray{T},
+                 dim1::Int, dim2::Int,
+                 filters::Union{NTuple{N}, Val{N}}) where {T, N}
+Use static size information (`N`) to reshape `submatrix` for interpolation.
+First, reshape `submatrix` which has size `(dim1 * dim2, N)` to `(dim1, dim2, N)`. Then 
+convert to a `Vector{SVector{N, T}}` for more efficient use with Interpolations.jl.
 """
-function repack_submatrix(submatrix::AbstractArray{T},
-                          dim1::Int, dim2::Int,
-                          filters::NTuple{N, Symbol}) where {T, N}
+function repack_submatrix(submatrix::AbstractArray, dim1::Int, dim2::Int, ::NTuple{N}) where {N}
+    return repack_submatrix(submatrix, dim1, dim2, Val(N))
+end
+function repack_submatrix(submatrix::AbstractArray{T}, dim1::Int, dim2::Int, ::Val{N}) where {T, N}
     submatrix = reshape(submatrix,
                         dim1, # length(logg),
                         dim2, # length(teff),
-                        length(filters))
-    return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
+                        N)
+    return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1), j=axes(submatrix,2)]
 end

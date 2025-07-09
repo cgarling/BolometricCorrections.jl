@@ -435,7 +435,6 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
     end
     # Construct interpolator and return MISTBCTable
     itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                      # repack_submatrix(submatrix, filters),
                       repack_submatrix(submatrix, length(_mist_logg), length(_mist_Teff), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())

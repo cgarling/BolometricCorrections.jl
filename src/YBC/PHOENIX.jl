@@ -6,10 +6,13 @@ Reference articles for these models are [Allard2014](@citet), [Allard2012](@cite
 """
 module PHOENIX
 
+using ...BolometricCorrections: repack_submatrix
 using ..YBC: pull_table, parse_filterinfo
+
 using ArgCheck: @argcheck
 using Compat: @compat
-using Interpolations: interpolate, extrapolate, Flat, Throw, BSpline, Cubic, Line, OnGrid
+# using Interpolations: interpolate, extrapolate, Flat, Throw, BSpline, Cubic, Line, OnGrid
+using Interpolations: cubic_spline_interpolation
 # import CSV
 using FITSIO: FITS, read_header, colnames
 using Printf: @sprintf # Formatted conversion of floats to strings
@@ -65,6 +68,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
     filternames = filterinfo.names
+    # return filternames
     # return files
 
     # Figure out which file we need for given mh
@@ -74,8 +78,13 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     # Access FITS file
     FITS(goodfile, "r") do f
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-        return data
+        # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
+        newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
+        itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
     end
+    # itp = interpolate((gridinfo.logTeff, ygrid), values, BSpline(Cubic(Line(OnGrid()))))
+    # return itp
+
     # Dependent variables "logTeff", "logg" should be the same for all
     # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
     # we just need to form an array with all the relevant BCs that we can then

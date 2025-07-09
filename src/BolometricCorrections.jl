@@ -2,6 +2,7 @@ module BolometricCorrections
 
 using ArgCheck: @argcheck
 using Compat: @compat # for @compat public <x>
+using StaticArrays: SVector
 import CSV
 import Tables
 import TypedTables: Table, columnnames, columns, getproperties
