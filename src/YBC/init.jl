@@ -11,6 +11,7 @@ end
 
 """
     ybc_path(path::String = scratch_dir)
+
 Ensure that `path` is initialized properly to contain the YBC git repository. Returns path to the directory containing the initialized YBC Git repository.
 """
 function ybc_path(path::String = scratch_dir)
@@ -44,12 +45,16 @@ function ybc_path(path::String = scratch_dir)
     return full_path
 end
 
-function _clean_list(prefix::AbstractString="YBC")
-
+function update_tables(path::String = ybc_path())
+    run(`$(git()) -C $path fetch origin`)
+    run(`$(git()) -C $path pull origin master`)
+    return nothing
 end
+
 """
     pull_table(f::AbstractString, prefix::AbstractString="YBC")
-Pull files from YBC repository corresponding to filter system `f` which must correspond to a valid subdirectory in `ybc_tables/prefix`. Available `prefix` entries (as of 2025-07-09) are "YBC" (for standard BCs), "rYBC" (BC tables for rotating stars), and "iYBC" (the limb darkening coefficients with Kurucz libraries.)
+
+Pull files from YBC repository corresponding to filter system `f` which must correspond to a valid subdirectory in `joinpath(ybc_tables, prefix)`. Available `prefix` entries (as of 2025-07-09) are "YBC" (for standard BCs), "rYBC" (BC tables for rotating stars), and "iYBC" (the limb darkening coefficients with Kurucz libraries.)
 """
 function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
     f = String(f)
@@ -63,7 +68,7 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
         throw(ArgumentError("prefix $prefix invalid; available prefixes are $subdirs."))
     end
     # Add requested filter system to sparse-checkout list
-    run(`$(git()) -C $repo sparse-checkout add $(prefix * "/" * f)`)
+    run(`$(git()) -C $repo sparse-checkout add $(joinpath(prefix, f))`)
 
     # Ensure that requested filter system `f` is in the remote directory list
     # Does not work until you add at least one filter to create the `prefix` folder,
@@ -71,13 +76,26 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
     # and if not we will remove the invalid entry.
     systems = split(readchomp(`$(git()) -C $(joinpath(repo, prefix)) ls-tree -d master --name-only`), "\n")
     if f ∉ systems
-        # Remove invalid system from sparse-checkout list
-        # To do this need to `set` with list that does not include invalid entry
-        # run(`$(git()) -C $repo sparse-checkout rm $(prefix * "/" * f)`)
-        installed = split(readchomp(`$(git()) -C $repo sparse-checkout list`), "\n")
-        good = filter(!=(prefix*"/"*f), installed)
-        run(`$(git()) -C $repo sparse-checkout set $good`)
-        run(`$(git()) -C $repo sparse-checkout reapply`)
+        remove_table(f, prefix)
         throw(ArgumentError("Requested filter system $f invalid; available systems are $systems."))
     end
+    return nothing
 end
+
+"""
+    remove_table(f::AbstractString, prefix::AbstractString="YBC")
+
+Remove table `joinpath(prefix, f)` from the Git sparse-checkout list for YBC -- this will uninstall the related data files.
+"""
+function remove_table(f::AbstractString, prefix::AbstractString="YBC")
+    # Remove invalid system from sparse-checkout list
+    # To do this need to `set` with list that does not include invalid entry
+    # run(`$(git()) -C $repo sparse-checkout rm $(prefix * "/" * f)`)
+    repo = ybc_path()
+    installed = split(readchomp(`$(git()) -C $repo sparse-checkout list`), "\n")
+    good = filter(!=(joinpath(prefix, f)), installed)
+    run(`$(git()) -C $repo sparse-checkout set $good`)
+    run(`$(git()) -C $repo sparse-checkout reapply`)
+    return nothing
+end
+
