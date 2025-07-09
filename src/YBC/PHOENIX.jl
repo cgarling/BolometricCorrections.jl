@@ -6,13 +6,14 @@ Reference articles for these models are [Allard2014](@citet), [Allard2012](@cite
 """
 module PHOENIX
 
-using ...BolometricCorrections: repack_submatrix
+using ...BolometricCorrections: repack_submatrix, AbstractBCTable
+import ...BolometricCorrections: zeropoints, filternames, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: pull_table, parse_filterinfo
 
 using ArgCheck: @argcheck
 using Compat: @compat
 # using Interpolations: interpolate, extrapolate, Flat, Throw, BSpline, Cubic, Line, OnGrid
-using Interpolations: cubic_spline_interpolation
+using Interpolations: cubic_spline_interpolation, Throw
 # import CSV
 using FITSIO: FITS, read_header, colnames
 using Printf: @sprintf # Formatted conversion of floats to strings
@@ -49,17 +50,30 @@ function _parse_filename(f::AbstractString)
     return (MH = parse(Float64, mh), α_fe = parse(Float64, α_fe))
 end
 
-function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
-    path = pull_table(String(grid), String(prefix))
-    files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
-    filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
-    return files
-    # Dependent variables "logTeff", "logg" should be the same for all
-    # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
-    # we just need to form an array with all the relevant BCs that we can then
-    # interpolate between. 
+#########################################################
+# A single BC table, with fixed [M/H] and Av
+struct PHOENIXYBCTable{A <: Real, B, N} <: AbstractBCTable{A}
+    MH::A
+    Av::A
+    mag_zpt::Vector{A}
+    system::Vector{String}
+    itp::B     # Interpolator object
+    filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
+function PHOENIXYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, system, itp, filters)
+    T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
+    return PHOENIXYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, system), itp, filters)
+end
+Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with [M/H] ",
+                                          z.MH, " and V-band extinction ", z.Av)
+filternames(table::PHOENIXYBCTable) = table.filters
+zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
+# Interpolations uses `bounds` to return interpolation domain
+# We will just use the hard-coded grid bounds; extremely fast
+Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                   logg = (first(gridinfo.logg), last(gridinfo.logg)))
+(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+# to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
     @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use YBCPHOENIXGrid for grid interpolation."
@@ -68,8 +82,6 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
     filternames = filterinfo.names
-    # return filternames
-    # return files
 
     # Figure out which file we need for given mh
     goodfile = files[findfirst(≈(mh), _parse_filename(file).MH for file in files)]
@@ -81,14 +93,20 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
         newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
         itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
+        return PHOENIXYBCTable(mh, Av, filterinfo.mag_zeropoint, string.(filterinfo.photometric_system), itp, tuple(Symbol.(filternames)...))
     end
-    # itp = interpolate((gridinfo.logTeff, ygrid), values, BSpline(Cubic(Line(OnGrid()))))
-    # return itp
-
-    # Dependent variables "logTeff", "logg" should be the same for all
-    # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
-    # we just need to form an array with all the relevant BCs that we can then
-    # interpolate between. 
 end
+
+# function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
+#     path = pull_table(String(grid), String(prefix))
+#     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
+#     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
+#     filternames = filterinfo.names
+#     return files
+#     # Dependent variables "logTeff", "logg" should be the same for all
+#     # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
+#     # we just need to form an array with all the relevant BCs that we can then
+#     # interpolate between. 
+# end
 
 end # module
