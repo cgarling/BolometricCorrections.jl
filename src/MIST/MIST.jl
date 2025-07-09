@@ -5,9 +5,9 @@ module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
-                               interp1d, interp2d
+                               interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                 Y, Y_phot, Z, Z_phot, MH, chemistry
+                                Y, Y_phot, Z, Z_phot, MH, chemistry
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -345,14 +345,14 @@ end
 
 # Use statically known size from filters argument to repack submatrix
 # into a vector of SVectors to pass into interpolator
-function repack_submatrix(submatrix::AbstractArray{T},
-                          filters::NTuple{N, Symbol}) where {T, N}
-    submatrix = reshape(submatrix,
-                        length(_mist_logg),
-                        length(_mist_Teff),
-                        length(filters))
-    return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
-end
+# function repack_submatrix(submatrix::AbstractArray{T},
+#                           filters::NTuple{N, Symbol}) where {T, N}
+#     submatrix = reshape(submatrix,
+#                         length(_mist_logg),
+#                         length(_mist_Teff),
+#                         length(filters))
+#     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
+# end
 """
     MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
 
@@ -445,7 +445,8 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
     end
     # Construct interpolator and return MISTBCTable
     itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                      repack_submatrix(submatrix, filters),
+                      # repack_submatrix(submatrix, filters),
+                      repack_submatrix(submatrix, length(_mist_logg), length(_mist_Teff), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
     return MISTBCTable(feh, Av, itp, filters)

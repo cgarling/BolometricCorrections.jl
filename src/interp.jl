@@ -32,3 +32,18 @@ true
 function interp2d(x::Number, y::Number, x1::Number, x2::Number, y1::Number, y2::Number, z1_1, z2_1, z1_2, z2_2)
     return @. (z1_1 * (x2 - x) * (y2 - y) + z1_2 * (x2 - x) * (y - y1) + z2_1 * (x - x1) * (y2 - y) + z2_2 * (x - x1) * (y - y1)) / (x2 - x1) / (y2 - y1)
 end
+
+# Use statically known size from filters argument to repack submatrix
+# into a vector of SVectors to pass into interpolator
+"""
+
+"""
+function repack_submatrix(submatrix::AbstractArray{T},
+                          dim1::Int, dim2::Int,
+                          filters::NTuple{N, Symbol}) where {T, N}
+    submatrix = reshape(submatrix,
+                        dim1, # length(logg),
+                        dim2, # length(teff),
+                        length(filters))
+    return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
+end
