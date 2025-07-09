@@ -343,16 +343,6 @@ function select_subtable(table::Table, feh::Real, Av::Real)
     return result
 end
 
-# Use statically known size from filters argument to repack submatrix
-# into a vector of SVectors to pass into interpolator
-# function repack_submatrix(submatrix::AbstractArray{T},
-#                           filters::NTuple{N, Symbol}) where {T, N}
-#     submatrix = reshape(submatrix,
-#                         length(_mist_logg),
-#                         length(_mist_Teff),
-#                         length(filters))
-#     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
-# end
 """
     MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
 
