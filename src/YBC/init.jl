@@ -85,11 +85,11 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
 end
 
 """
-    remove_table(f::AbstractString, prefix::AbstractString="YBC")
+    remove_table(f::AbstractString, prefix::AbstractString)
 
 Remove table `joinpath(prefix, f)` from the Git sparse-checkout list for YBC -- this will uninstall the related data files.
 """
-function remove_table(f::AbstractString, prefix::AbstractString="YBC")
+function remove_table(f::AbstractString, prefix::AbstractString)
     # Remove invalid system from sparse-checkout list
     # To do this need to `set` with list that does not include invalid entry
     # run(`$(git()) -C $repo sparse-checkout rm $(prefix * "/" * f)`)
