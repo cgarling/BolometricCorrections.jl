@@ -4,11 +4,19 @@ This submodule enables interaction with the "YBC" bolometric correction (BC) gri
 
 Our implementation currently only supports a subset of the libraries in the full YBC set. In particular, we support the [PHOENIX](@ref YBCPHOENIX) models which are used for cool stars, and are working to support the ATLAS9 models used for hotter stars.
 
-Querying photometric filter systems follows the directory structure of the YBC git repository. Presently we only support the standard BCs hosted under the "YBC" subdirectory. This repository can be accessed at the URL below.
+## Obtaining Data
+
+Our naming convention for photometric filter systems follows the directory structure of the YBC git repository -- see [supported systems](@ref ybc_systems) below. This repository can be accessed at the URL below.
 
 ```@example ybc
 using BolometricCorrections.YBC # hide
 println(split(YBC.ybc_url, ".git")[1]) # hide
+```
+
+The data are obtained by creating a local sparse clone of the YBC git repository with [Scratch.jl](https://github.com/JuliaPackaging/Scratch.jl) and only pulling the data for photometric systems that you request. Presently we only support the standard BCs hosted under the "YBC" subdirectory. These data will be removed automatically if you uninstall the package. In the event you wish to uninstall the data for a particular photometric filter system, you can use [`BolometricCorrections.YBC.remove_table`](@ref), though this should not typically be necessary as the data for each system is on average ~20 MB.
+
+```@docs
+BolometricCorrections.YBC.remove_table
 ```
 
 ## [Supported Systems](@id ybc_systems)
