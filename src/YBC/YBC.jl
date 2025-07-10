@@ -29,6 +29,8 @@ check_prefix(prefix) = prefix != "YBC" ? throw(ArgumentError("""prefix = $prefix
 include("PHOENIX.jl")
 using .PHOENIX
 @compat public PHOENIX
+export PHOENIXYBCTable, PHOENIXYBCGrid
+
 
 
 end # Module
