@@ -10,6 +10,15 @@ const sparse_checkout_list = Vector{String}()
 """Tracks the valid photometric filter systems for YBC."""
 const systems = Vector{String}()
 
+function ensure_git_lfs_available()
+    # Use Sys.which if available (Julia ≥ 1.9), else fall back
+    path = isdefined(Sys, :which) ? Sys.which("git-lfs") : Base.find_executable("git-lfs")
+    if isnothing(path)
+        error("Missing required binary: `git-lfs` is not on PATH. Please install Git LFS.")
+    end
+end
+
+
 function __init__()
     global scratch_dir = @get_scratch!("YBC") # This will create the YBC dir
     global ybc_path = _ybc_path(scratch_dir)
@@ -54,6 +63,7 @@ function _ybc_path(path::String = scratch_dir)
         # Clone repo skipping file contents (--filter=blob:none) and not checking out
         @info "Initializing YBC repository in $path"
         run(`$(git()) -C $path clone --filter=blob:none --no-checkout $ybc_url`)
+        ensure_git_lfs_available()
         run(`$(git()) -C $(joinpath(path, "ybc_tables")) lfs install --local`)
 
         # Perform a sparse checkout (only `add`ed files will be checked out),
