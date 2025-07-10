@@ -100,31 +100,6 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
 
     return joinpath(repo, prefix, f)
 end
-# function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
-#     f = String(f)
-#     prefix = String(prefix)
-#     # Get path to repo
-#     repo = ybc_path
-#     # Check that prefix is valid -- YBC, iYBC, and rYBC should be valid.
-#     # YBC is the normal BC tables, rYBC
-#     subdirs = split(readchomp(`$(git()) -C $repo ls-tree -d master --name-only`), "\n")
-#     if prefix ∉ subdirs
-#         throw(ArgumentError("prefix $prefix invalid; available prefixes are $subdirs."))
-#     end
-#     # Add requested filter system to sparse-checkout list
-#     run(`$(git()) -C $repo sparse-checkout add $(joinpath(prefix, f))`)
-
-#     # Ensure that requested filter system `f` is in the remote directory list
-#     # Does not work until you add at least one filter to create the `prefix` folder,
-#     # so we'll issue the add command first, then check that the request was valid,
-#     # and if not we will remove the invalid entry.
-#     systems = split(readchomp(`$(git()) -C $(joinpath(repo, prefix)) ls-tree -d master --name-only`), "\n")
-#     if f ∉ systems
-#         remove_table(f, prefix)
-#         throw(ArgumentError("Requested filter system $f invalid; available systems are $systems."))
-#     end
-#     return joinpath(repo, prefix, f)
-# end
 
 """
     remove_table(f::AbstractString, prefix::AbstractString = "YBC")
