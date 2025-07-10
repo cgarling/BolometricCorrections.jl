@@ -200,7 +200,7 @@ mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fna
 
 Load and return the MIST bolometric corrections for the given photometric system `grid`.
 This type is used to create instances of [`MISTBCTable`](@ref) that have fixed dependent
-grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of
+grid variables (\\[Fe/H\\], Av). This can be done either by calling an instance of
 `MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
 
 ```jldoctest

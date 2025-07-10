@@ -1,6 +1,6 @@
 
 """
-YBC submodule exposing the bolometric corrections based on PHOENIX BT-Settl atmospheres computed by the YBC team. The original atmosphere models are hosted by SVO [here](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl) and StSCI provides a subset of the PHOENIX library for use with their Synphot software [here](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/phoenix-models-available-in-synphot). These models assume [Asplund2009](@citet) solar chemical abundances.
+YBC submodule exposing the bolometric corrections based on PHOENIX BT-Settl atmospheres computed by the YBC team. These models assume [Asplund2009](@citet) solar chemical abundances.
 
 The main reference article for these models is [Allard2012](@citet). [Allard2013](@citet) discusses BT-Settl models with the solar composition from [Caffau2011](@citet), but this module uses the model with the [Asplund2009](@citet) abundances.
 """
@@ -75,7 +75,23 @@ end
 #########################################################
 # AbstractBCGrid code
 
+"""
+    PHOENIXYBCGrid(grid::AbstractString)
 
+Load and return the YBC PHOENIX bolometric corrections for the given photometric system `grid`,
+which must be a valid entry in `BolometricCorrections.YBC.systems`.
+This type is used to create instances of [`PHOENIXYBCTable`](@ref) that have fixed dependent
+grid variables (\\[M/H\\], Av). This can be done either by calling an instance of
+`PHOENIXYBCGrid` with `(mh, Av)` arguments or by using the appropriate constructor for [`PHOENIXYBCTable`](@ref).
+
+```jldoctest
+julia> grid = PHOENIXYBCGrid("acs_wfc")
+YBC PHOENIX bolometric correction grid for photometric system YBC/acs_wfc.
+
+julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
+YBC PHOENIX BT-Settl bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
+```
+"""
 struct PHOENIXYBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
     data::Matrix{Matrix{A}} # A should be Float32
     mag_zpt::C
@@ -145,6 +161,35 @@ chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
 
 #########################################################
 # A single BC table, with fixed [M/H] and Av
+
+"""
+    PHOENIXYBCTable(grid::MISTBCGrid, mh::Real, Av::Real)
+
+Interpolates the YBC PHOENIX bolometric corrections in `grid` to a fixed value of \\[M/H\\]
+(`mh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
+variables (the YBC PHOENIX BCs have only one `Rv` value). Returns an instance that is callable
+with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function
+of temperature and surface gravity.
+
+```jldoctest
+julia> grid = PHOENIXYBCGrid("acs_wfc")
+YBC PHOENIX bolometric correction grid for photometric system YBC/acs_wfc.
+
+julia> table = PHOENIXYBCTable(grid, -1.01, 0.011)
+YBC PHOENIX BT-Settl bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
+
+julia> length(table(2755, 0.01)) == 12 # Returns BC in each filter
+true
+
+julia> size(table([2755, 2756], [0.01, 0.02])) # `table(array, array)` is also supported
+(12, 2)
+
+julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
+
+julia> table(Table, [2755, 2756], [0.01, 0.02]) isa Table
+true
+```
+"""
 struct PHOENIXYBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     MH::A
     Av::A

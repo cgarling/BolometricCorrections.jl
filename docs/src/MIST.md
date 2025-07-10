@@ -9,7 +9,7 @@ include(joinpath(@__DIR__, "examples", "bc_tables.jl"))
 plot_mist_bc_table("JWST", "F090W", -1, 0) # hide
 ```
 
-## Chemistry
+## [Chemistry](@id MIST_chemistry)
 The MIST BC grid assumes scaled-solar metal abundance ratios assuming the protostellar birth cloud bulk metallicity of [Asplund2009](@citet), so \[M/H\] is equivalent to \[Fe/H\]. The literature on the MIST models prefers to use \[Fe/H\], so we follow the same convention here. We provide [`BolometricCorrections.MIST.MISTChemistry`](@ref) to access information on the MIST chemical mixture following the [chemical mixture API](@ref chemistry_api).
 
 ```@docs
