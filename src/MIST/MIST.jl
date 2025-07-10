@@ -473,8 +473,8 @@ true
 ```
 """
 struct MISTChemistry <: AbstractChemicalMixture end
-chemistry(::MISTBCGrid) = MISTChemistry()
-chemistry(::MISTBCTable) = MISTChemistry()
+chemistry(::Type{<:MISTBCGrid}) = MISTChemistry()
+chemistry(::Type{<:MISTBCTable}) = MISTChemistry()
 X(::MISTChemistry) = 0.7154 / 0.9999
 X_phot(::MISTChemistry) = 0.7381
 Y(::MISTChemistry) = 0.2703 / 0.9999

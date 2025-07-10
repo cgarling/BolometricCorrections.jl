@@ -231,7 +231,9 @@ julia> chemistry(table)
 BolometricCorrections.MIST.MISTChemistry()
 ```
 """
-function chemistry(mix::AbstractBCTable) end
+chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
+chemistry(mix::AbstractBCGrid) = chemistry(typeof(mix))
+# ↑ generics that call to chemistry(::Type{<:NewType}) which can often be simple
 
 """
     X(mix::AbstractChemicalMixture)
@@ -320,6 +322,7 @@ export MISTBCGrid, MISTBCTable
 include(joinpath("YBC", "YBC.jl"))
 using .YBC
 @compat public YBC
+export PHOENIXYBCTable, PHOENIXYBCGrid
 
 
 end # module

@@ -14,7 +14,7 @@ using ..YBC: pull_table, parse_filterinfo, check_prefix
 using ArgCheck: @argcheck
 using Compat: @compat
 # using Interpolations: interpolate, extrapolate, Flat, Throw, BSpline, Cubic, Line, OnGrid
-using Interpolations: cubic_spline_interpolation, Throw
+using Interpolations: cubic_spline_interpolation, Throw, Flat
 # import CSV
 using FITSIO: FITS, read_header, colnames
 using Printf: @sprintf # Formatted conversion of floats to strings
@@ -139,6 +139,7 @@ Base.extrema(::PHOENIXYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(
                                   Av = (first(gridinfo.Av), last(gridinfo.Av)),
                                   Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
+chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
 # zeropoints(::MISTBCGrid) = zpt
 
 
@@ -157,7 +158,7 @@ function PHOENIXYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, n
     T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return PHOENIXYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
-chemistry(::PHOENIXYBCTable) = MISTChemistry()
+chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistry()
 Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
@@ -201,7 +202,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
         return data
         logg = mh > -2.5 ? gridinfo.logg : gridinfo.logg[begin:end-1]
         newdata = repack_submatrix(data, length(logg), length(gridinfo.logTeff), Val(length(filternames)))
-        itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
+        itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
         return PHOENIXYBCTable(mh, Av, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
     end
 end
@@ -266,7 +267,7 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
         end
     end
     newdata = repack_submatrix(submatrix, length(logg), length(gridinfo.logTeff), Val(length(filters)))
-    itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
+    itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
 
