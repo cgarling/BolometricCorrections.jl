@@ -6,9 +6,6 @@ BolometricCorrections.AbstractBCGrid
 filternames(::BolometricCorrections.AbstractBCGrid)
 extrema(::BolometricCorrections.AbstractBCGrid)
 Table(::BolometricCorrections.AbstractBCGrid)
-columnnames(::BolometricCorrections.AbstractBCGrid)
-columns(::BolometricCorrections.AbstractBCGrid)
-getproperties(::BolometricCorrections.AbstractBCGrid, ::Tuple{Vararg{Symbol}})
 ```
 
 ## BC Table API
@@ -17,9 +14,6 @@ BolometricCorrections.AbstractBCTable
 filternames(::BolometricCorrections.AbstractBCTable)
 extrema(::BolometricCorrections.AbstractBCTable)
 Table(::BolometricCorrections.AbstractBCTable)
-columnnames(::BolometricCorrections.AbstractBCTable)
-columns(::BolometricCorrections.AbstractBCTable)
-getproperties(::BolometricCorrections.AbstractBCTable, ::Tuple{Vararg{Symbol}})
 ```
 
 ## [Photometric Zeropoints API](@id zpt_api)
