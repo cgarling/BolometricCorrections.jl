@@ -168,7 +168,7 @@ chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
 Interpolates the YBC PHOENIX bolometric corrections in `grid` to a fixed value of \\[M/H\\]
 (`mh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
 variables (the YBC PHOENIX BCs have only one `Rv` value). Returns an instance that is callable
-with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function
+with arguments `(Teff [K], logg [cgs])` to interpolate the bolometric corrections as a function
 of temperature and surface gravity.
 
 ```jldoctest
