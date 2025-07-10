@@ -5,14 +5,25 @@ const ybc_url = "https://gitlab.com/cycyustc/ybc_tables.git"
 
 scratch_dir = ""
 ybc_path = ""
+"""Tracks git sparse checkout list so we don't have to call slow git functions (`git sparse-checkout list`)."""
 const sparse_checkout_list = Vector{String}()
+"""Tracks the valid photometric filter systems for YBC."""
+const systems = Vector{String}()
 
 function __init__()
     global scratch_dir = @get_scratch!("YBC") # This will create the YBC dir
     global ybc_path = _ybc_path(scratch_dir)
+    for i in ("iYBC", "rYBC", "YBC")
+        # mkdir errors if dir exists, mkpath does not
+        mkpath(joinpath(ybc_path, i))
+    end
     # Read the Git sparse checkout list and write contents into sparse_checkout_list
     for f in split(readchomp(`$(git()) -C $ybc_path sparse-checkout list`), "\n")
         push!(sparse_checkout_list, f)
+    end
+    # Read subdirectories of ybc_tables/YBC and write into systems
+    for f in split(readchomp(`$(git()) -C $(joinpath(ybc_path, "YBC")) ls-tree -d master --name-only`), "\n") # $(joinpath(repo, prefix))
+        push!(systems, f)
     end
 end
 
@@ -72,33 +83,21 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
     repo = ybc_path
     # Check that prefix is valid
     check_prefix(prefix)
-    # # Check that prefix is valid -- YBC, iYBC, and rYBC should be valid.
-    # # YBC is the normal BC tables, rYBC
-    # subdirs = split(readchomp(`$(git()) -C $repo ls-tree -d master --name-only`), "\n")
-    # if prefix ∉ subdirs
-    #     throw(ArgumentError("prefix $prefix invalid; available prefixes are $subdirs."))
-    # end
+
+    # Check that f is a supported system
+    if f ∉ systems
+        throw(ArgumentError("Requested filter system $f invalid; available systems are $systems."))
+    end
 
     # Add requested filter system to sparse-checkout list
     name = joinpath(prefix, f)
     # Running sparse-checkout add is slow -- faster to check if entry already there,
     # then if not, run add command
-    # if name ∉ split(readchomp(`$(git()) -C $repo sparse-checkout list`), "\n")
     if name ∉ sparse_checkout_list
         run(`$(git()) -C $repo sparse-checkout add $name`)
         push!(sparse_checkout_list, name)
     end
-    return
-    
-    # Ensure that requested filter system `f` is in the remote directory list
-    # Does not work until you add at least one filter to create the `prefix` folder,
-    # so we'll issue the add command first, then check that the request was valid,
-    # and if not we will remove the invalid entry.
-    systems = split(readchomp(`$(git()) -C $(joinpath(repo, prefix)) ls-tree -d master --name-only`), "\n")
-    if f ∉ systems
-        remove_table(f, prefix)
-        throw(ArgumentError("Requested filter system $f invalid; available systems are $systems."))
-    end
+
     return joinpath(repo, prefix, f)
 end
 # function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
