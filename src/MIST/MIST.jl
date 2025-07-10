@@ -22,7 +22,8 @@ using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
 import Tar
 import Tables # for Tables.matrix conversion
-import TypedTables: Table, columnnames, getproperties, columns # import to extend
+import TypedTables: Table # import to extend
+using TypedTables: columnnames, getproperties, columns
 using Unicode: normalize # To normalize string arguments
 
 export MISTBCGrid, MISTBCTable, MISTChemistry, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH
