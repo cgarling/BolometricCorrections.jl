@@ -2,12 +2,13 @@
 """
 YBC submodule exposing the bolometric corrections based on PHOENIX BT-Settl atmospheres computed by the YBC team. The original atmosphere models are hosted by SVO [here](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl) and StSCI provides a subset of the PHOENIX library for use with their Synphot software [here](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/phoenix-models-available-in-synphot). These models assume [Asplund2009](@citet) solar chemical abundances.
 
-Reference articles for these models are [Allard2014](@citet), [Allard2012](@citet)
+The main reference article for these models is [Allard2012](@citet). [Allard2013](@citet) discusses BT-Settl models with the solar composition from [Caffau2011](@citet), but this module uses the model with the [Asplund2009](@citet) abundances.
 """
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable
-import ...BolometricCorrections: zeropoints, filternames, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry # Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry, vegamags, abmags, stmags, Mbol, Lbol
+using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
 using ..YBC: pull_table, parse_filterinfo, check_prefix
 
 using ArgCheck: @argcheck
@@ -18,6 +19,8 @@ using Interpolations: cubic_spline_interpolation, Throw
 using FITSIO: FITS, read_header, colnames
 using Printf: @sprintf # Formatted conversion of floats to strings
 using TypedTables: Table
+
+export PHOENIXYBCTable
 
 """ `NTuple{5, Symbol}` listing the dependent variables in the YBC.PHOENIX BC grid. """
 const _dependents = (:logTeff, :logg, :MH, :Av, :Rv)
@@ -40,6 +43,7 @@ const gridinfo = (logTeff = _logTeff,
 
 """
     _parse_filename(f::AbstractString)
+    
 Return [M/H] and [α/Fe] of PHOENIX BT-Settl model given a filename (example: "Avodonnell94Rv3.1BT-Settl_M-0.0_a+0.0.BC.fits").
 """
 function _parse_filename(f::AbstractString)
@@ -81,6 +85,7 @@ function PHOENIXYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, system, it
     T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return PHOENIXYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, system), itp, filters)
 end
+chemistry(::PHOENIXYBCTable) = MISTChemistry()
 Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with [M/H] ",
                                           z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
@@ -91,6 +96,8 @@ Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)))
 # Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+# Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
+(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table.itp(convert(Float32, logg), log10(convert(Float32, Teff)))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")

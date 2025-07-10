@@ -21,7 +21,7 @@ plt.matplotlib.use("agg")
 
 # DocMeta.setdocmeta!(BolometricCorrections, :DocTestSetup, :(using BolometricCorrections); recursive=true)
 
-bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:authoryear)
 
 makedocs(
     sitename = "BolometricCorrections.jl",
