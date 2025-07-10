@@ -43,7 +43,7 @@ const gridinfo = (logTeff = _logTeff,
 
 """
     _parse_filename(f::AbstractString)
-    
+
 Return [M/H] and [α/Fe] of PHOENIX BT-Settl model given a filename (example: "Avodonnell94Rv3.1BT-Settl_M-0.0_a+0.0.BC.fits").
 """
 function _parse_filename(f::AbstractString)
