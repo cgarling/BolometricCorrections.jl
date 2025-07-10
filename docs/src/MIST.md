@@ -26,7 +26,7 @@ The full range of dependent variables covered by this grid is given in the table
 | Av     | 0.0 mag    | 6.0 mag   |
 | Rv     | 3.1    | 3.1   |
 
-The full grid of unique values for the dependent variables is availabie in `BolometricCorrections.MIST.gridinfo`.
+The full grid of unique values for the dependent variables is available in `BolometricCorrections.MIST.gridinfo`.
 
 ```@example
 import BolometricCorrections # hide
