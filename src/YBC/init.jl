@@ -54,6 +54,8 @@ function _ybc_path(path::String = scratch_dir)
         # Clone repo skipping file contents (--filter=blob:none) and not checking out
         @info "Initializing YBC repository in $path"
         run(`$(git()) -C $path clone --filter=blob:none --no-checkout $ybc_url`)
+        run(`$(git()) -C $(joinpath(path, "ybc_tables")) lfs install --local`)
+
         # Perform a sparse checkout (only `add`ed files will be checked out),
         # interpreting sparse paths as entire directories, rather than complex patterns (--cone)
         run(`$(git()) -C $(joinpath(path, "ybc_tables")) sparse-checkout init --cone`)
