@@ -5,9 +5,9 @@ module MIST
 
 # using ..BolometricCorrections: Table, columnnames # relative path for parent module
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
-                               interp1d, interp2d
+                               interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                 Y, Y_phot, Z, Z_phot, MH, chemistry
+                                Y, Y_phot, Z, Z_phot, MH, chemistry
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -22,7 +22,8 @@ using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
 import Tar
 import Tables # for Tables.matrix conversion
-import TypedTables: Table, columnnames, getproperties, columns # import to extend
+import TypedTables: Table # import to extend
+using TypedTables: columnnames, getproperties, columns
 using Unicode: normalize # To normalize string arguments
 
 export MISTBCGrid, MISTBCTable, MISTChemistry, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH
@@ -172,16 +173,30 @@ include("init.jl")
     check_vals(feh, Av)
 
 Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST BC grid.
-Throws `DomainError` if check fails, returns `nothing` if check is successful.
+Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
+
+```jldoctest
+julia> using BolometricCorrections.MIST: check_vals
+
+julia> check_vals(-2, 0.0) # Check passes, returns nothing
+
+julia> using Test: @test_throws, Pass
+
+julia> @test_throws(ArgumentError, check_vals(-5, 0.0)) isa Pass # Invalid `mh`, throws error
+true
+
+julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) isa Pass # Invalid `Av`, throws error
+true
+```
 """
 function check_vals(feh, Av)
     feh_ext = extrema(_mist_feh)
     if feh < first(feh_ext) || feh > last(feh_ext)
-        throw(DomainError(feh, "Provided [Fe/H] $feh is outside the bounds for the MIST BC tables $feh_ext"))
+        throw(ArgumentError("Provided [Fe/H] $feh is outside the bounds for the MIST BC tables $feh_ext"))
     end
     Av_ext = extrema(_mist_Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(DomainError(Av, "Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
+        throw(ArgumentError("Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
     end
 end
 
@@ -199,7 +214,7 @@ mist_processed_fname(fname::AbstractString) = joinpath(fname, last(splitpath(fna
 
 Load and return the MIST bolometric corrections for the given photometric system `grid`.
 This type is used to create instances of [`MISTBCTable`](@ref) that have fixed dependent
-grid variables (\\[Fe/H\\], Av, Rv). This can be done either by calling an instance of
+grid variables (\\[Fe/H\\], Av). This can be done either by calling an instance of
 `MISTBCGrid` with `(feh, Av)` arguments or by using the appropriate constructor for [`MISTBCTable`](@ref).
 
 ```jldoctest
@@ -343,23 +358,13 @@ function select_subtable(table::Table, feh::Real, Av::Real)
     return result
 end
 
-# Use statically known size from filters argument to repack submatrix
-# into a vector of SVectors to pass into interpolator
-function repack_submatrix(submatrix::AbstractArray{T},
-                          filters::NTuple{N, Symbol}) where {T, N}
-    submatrix = reshape(submatrix,
-                        length(_mist_logg),
-                        length(_mist_Teff),
-                        length(filters))
-    return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1),j=axes(submatrix,2)]
-end
 """
     MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
 
 Interpolates the MIST bolometric corrections in `grid` to a fixed value of \\[Fe/H\\]
 (`feh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
 variables (the MIST BCs have only one `Rv` value). Returns an instance that is callable
-with arguments `(Teff, logg)` to interpolate the bolometric corrections as a function
+with arguments `(Teff [K], logg [cgs])` to interpolate the bolometric corrections as a function
 of temperature and surface gravity.
 
 ```jldoctest
@@ -445,7 +450,7 @@ function MISTBCTable(grid::MISTBCGrid, feh::Real, Av::Real)
     end
     # Construct interpolator and return MISTBCTable
     itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                      repack_submatrix(submatrix, filters),
+                      repack_submatrix(submatrix, length(_mist_logg), length(_mist_Teff), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
     return MISTBCTable(feh, Av, itp, filters)
@@ -482,8 +487,8 @@ true
 ```
 """
 struct MISTChemistry <: AbstractChemicalMixture end
-chemistry(::MISTBCGrid) = MISTChemistry()
-chemistry(::MISTBCTable) = MISTChemistry()
+chemistry(::Type{<:MISTBCGrid}) = MISTChemistry()
+chemistry(::Type{<:MISTBCTable}) = MISTChemistry()
 X(::MISTChemistry) = 0.7154 / 0.9999
 X_phot(::MISTChemistry) = 0.7381
 Y(::MISTChemistry) = 0.2703 / 0.9999

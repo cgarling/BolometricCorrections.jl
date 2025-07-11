@@ -2,6 +2,7 @@ module BolometricCorrections
 
 using ArgCheck: @argcheck
 using Compat: @compat # for @compat public <x>
+using StaticArrays: SVector
 import CSV
 import Tables
 import TypedTables: Table, columnnames, columns, getproperties
@@ -230,7 +231,9 @@ julia> chemistry(table)
 BolometricCorrections.MIST.MISTChemistry()
 ```
 """
-function chemistry(mix::AbstractBCTable) end
+chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
+chemistry(mix::AbstractBCGrid) = chemistry(typeof(mix))
+# ↑ generics that call to chemistry(::Type{<:NewType}) which can often be simple
 
 """
     X(mix::AbstractChemicalMixture)
@@ -311,12 +314,15 @@ export Table, columnnames, columns, getproperties, filternames, zeropoints, vega
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
-include("MIST/MIST.jl")
+include(joinpath("MIST", "MIST.jl"))
 using .MIST
 @compat public MIST
 export MISTBCGrid, MISTBCTable
-# exports from MIST
 
+include(joinpath("YBC", "YBC.jl"))
+using .YBC
+@compat public YBC
+export PHOENIXYBCTable, PHOENIXYBCGrid
 
 
 end # module
