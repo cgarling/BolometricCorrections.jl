@@ -53,11 +53,11 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
       - name: Drop doc‐only function stubs
         run: |
-          grep -vE '^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$' lcov.info \
-            > lcov.filtered.info
+          grep -vE '^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$' lcov.info > lcov.filtered.info
+          mv lcov.filtered.info lcov.info
       - uses: codecov/codecov-action@v5
         with:
-          files: lcov.filtered.info
+          files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
