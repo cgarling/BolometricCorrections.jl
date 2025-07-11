@@ -8,4 +8,5 @@ DocMeta.setdocmeta!(BC, :DocTestSetup, :(using BolometricCorrections); recursive
 doctest(BC)
 
 # Run tests for MIST submodule
-include("MIST/run_mist_tests.jl")
+include(joinpath("MIST", "run_mist_tests.jl"))
+include(joinpath("YBC", "run_ybc_tests.jl"))

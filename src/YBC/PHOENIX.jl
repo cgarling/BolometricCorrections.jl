@@ -59,16 +59,32 @@ end
     check_vals(mh, Av)
 
 Validate that [M/H] value `mh` and ``A_V`` value `Av` are valid for the YBC PHOENIX BC grid.
-Throws `DomainError` if check fails, returns `nothing` if check is successful.
+Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
+
+```jldoctest
+julia> using BolometricCorrections.YBC.PHOENIX: check_vals
+
+julia> check_vals(-2, 0.0) # Check passes, returns nothing
+
+julia> using Test: @test_throws
+
+julia> @test_throws ArgumentError check_vals(-5, 0.0) # Invalid `mh`, throws error
+Test Passed
+      Thrown: ArgumentError
+
+julia> @test_throws ArgumentError check_vals(-2, 100.0) # Invalid `Av`, throws error
+Test Passed
+      Thrown: ArgumentError
+```
 """
 function check_vals(mh, Av)
     mh_ext = extrema(gridinfo.MH)
     if mh < first(mh_ext) || mh > last(mh_ext)
-        throw(DomainError(mh, "Provided [M/H] $mh is outside the bounds for the YBC PHOENIX BC tables $mh_ext"))
+        throw(ArgumentError("Provided [M/H] $mh is outside the bounds for the YBC PHOENIX BC tables $mh_ext"))
     end
     Av_ext = extrema(gridinfo.Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(DomainError(Av, "Provided A_v $Av is outside the bounds for the YBC PHOENIX BC tables $Av_ext"))
+        throw(ArgumentError("Provided A_v $Av is outside the bounds for the YBC PHOENIX BC tables $Av_ext"))
     end
 end
 
@@ -90,6 +106,9 @@ YBC PHOENIX bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
 YBC PHOENIX BT-Settl bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
+
+julia> chemistry(grid) isa BolometricCorrections.MIST.MISTChemistry # Same chemical mixture as MIST
+true
 ```
 """
 struct PHOENIXYBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
@@ -171,11 +190,15 @@ variables (the YBC PHOENIX BCs have only one `Rv` value). Returns an instance th
 with arguments `(Teff [K], logg [cgs])` to interpolate the bolometric corrections as a function
 of temperature and surface gravity.
 
+    PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real)
+
+Loads the data necessary to construct the BC table for the provided `grid` (e.g., "acs_wfc") at \\[M/H\\] = `mh` and V-band extinction `Av`. This method does not support interpolation in metallicity or extinction, so the arguments `mh` and `Av` must be among the values provided by PHOENIX (see `BolometricCorrections.YBC.PHOENIX.gridinfo`).
+
 ```jldoctest
 julia> grid = PHOENIXYBCGrid("acs_wfc")
 YBC PHOENIX bolometric correction grid for photometric system YBC/acs_wfc.
 
-julia> table = PHOENIXYBCTable(grid, -1.01, 0.011)
+julia> table = PHOENIXYBCTable(grid, -1.01, 0.011) # Interpolate table from full grid
 YBC PHOENIX BT-Settl bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(2755, 0.01)) == 12 # Returns BC in each filter
@@ -187,6 +210,12 @@ julia> size(table([2755, 2756], [0.01, 0.02])) # `table(array, array)` is also s
 julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
 
 julia> table(Table, [2755, 2756], [0.01, 0.02]) isa Table
+true
+
+julia> chemistry(table) isa BolometricCorrections.MIST.MISTChemistry # Same chemical mixture as MIST
+true
+
+julia> PHOENIXYBCTable("acs_wfc", -2.0, 0.5) isa PHOENIXYBCTable # Can construct without a PHOENIXYBCGrid
 true
 ```
 """
@@ -207,7 +236,8 @@ chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistry()
 Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
-zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
+# zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
+
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
 Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
@@ -243,8 +273,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs
         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
         # Account for the fact that logg = 6 is missing for mh <= -2.5
-        println(length(unique(read(f[2], "logg"))) * length(unique(read(f[2], "logTeff"))))
-        return data
+        # println(length(unique(read(f[2], "logg"))) * length(unique(read(f[2], "logTeff"))))
         logg = mh > -2.5 ? gridinfo.logg : gridinfo.logg[begin:end-1]
         newdata = repack_submatrix(data, length(logg), length(gridinfo.logTeff), Val(length(filternames)))
         itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())

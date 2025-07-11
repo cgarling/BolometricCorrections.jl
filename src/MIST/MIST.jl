@@ -173,16 +173,32 @@ include("init.jl")
     check_vals(feh, Av)
 
 Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST BC grid.
-Throws `DomainError` if check fails, returns `nothing` if check is successful.
+Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
+
+```jldoctest
+julia> using BolometricCorrections.MIST: check_vals
+
+julia> check_vals(-2, 0.0) # Check passes, returns nothing
+
+julia> using Test: @test_throws
+
+julia> @test_throws ArgumentError check_vals(-5, 0.0) # Invalid `mh`, throws error
+Test Passed
+      Thrown: ArgumentError
+
+julia> @test_throws ArgumentError check_vals(-2, 100.0) # Invalid `Av`, throws error
+Test Passed
+      Thrown: ArgumentError
+```
 """
 function check_vals(feh, Av)
     feh_ext = extrema(_mist_feh)
     if feh < first(feh_ext) || feh > last(feh_ext)
-        throw(DomainError(feh, "Provided [Fe/H] $feh is outside the bounds for the MIST BC tables $feh_ext"))
+        throw(ArgumentError("Provided [Fe/H] $feh is outside the bounds for the MIST BC tables $feh_ext"))
     end
     Av_ext = extrema(_mist_Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(DomainError(Av, "Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
+        throw(ArgumentError("Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
     end
 end
 

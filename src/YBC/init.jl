@@ -2,6 +2,8 @@ using Git: git
 using Scratch: @get_scratch!
 
 const ybc_url = "https://gitlab.com/cycyustc/ybc_tables.git"
+# Looks like raw spectra might be hosted here
+# https://gitlab.com/cycyustc/spec_ybc
 
 scratch_dir = ""
 ybc_path = ""
