@@ -53,13 +53,14 @@ jobs:
       # - uses: julia-actions/julia-processcoverage@v1
       - name: Run coverage & filter function doc stubs
         # Drop any records whose source lines match something like `function *(*)* end`
+        shell: julia --color=yes {0}
         run: |
-          julia -e '
-            import Pkg; Pkg.add(Coverage);
-            using Coverage;
-            cov = process_folder(pwd());
-            filter!(rec -> !ismatch(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov);
-            write_coverage_file(cov, "lcov.info");'
+          using Pkg
+          Pkg.add(Coverage)
+          using Coverage
+          cov = process_folder(pwd())
+          filter!(rec -> !ismatch(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov)
+          write_coverage_file(cov, "lcov.info")
       - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
