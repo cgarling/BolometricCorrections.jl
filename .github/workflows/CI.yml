@@ -50,12 +50,17 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           DATADEPS_ALWAYS_ACCEPT: 'true'
-      - uses: julia-actions/julia-processcoverage@v1
-      - name: Drop doc‐only function stubs
-        shell: bash
+      # - uses: julia-actions/julia-processcoverage@v1
+      - name: Run coverage & filter function doc stubs
         run: |
-          grep -vP '^\s*function\s+.*\([^)]*\)\s*end\s*$' lcov.info > lcov.filtered.info
-          mv lcov.filtered.info lcov.info
+          julia -e '
+            import Pkg; Pkg.add(Coverage)
+            using Coverage;
+            # Collect raw coverage
+            cov = process_folder(pwd());
+            # Drop any records whose source lines match something like `function *(*)* end`
+            filter!(rec -> !ismatch(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov);
+            write_coverage_file(cov, "lcov.info");'
       - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
