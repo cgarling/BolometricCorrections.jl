@@ -52,6 +52,7 @@ jobs:
           DATADEPS_ALWAYS_ACCEPT: 'true'
       - uses: julia-actions/julia-processcoverage@v1
       - name: Drop doc‐only function stubs
+        shell: bash
         run: |
           grep -vE '^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$' lcov.info > lcov.filtered.info
           mv lcov.filtered.info lcov.info
