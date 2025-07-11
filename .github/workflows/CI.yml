@@ -54,7 +54,7 @@ jobs:
       - name: Drop doc‐only function stubs
         shell: bash
         run: |
-          grep -vE '^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$' lcov.info > lcov.filtered.info
+          grep -vP '^\s*function\s+.*\([^)]*\)\s*end\s*$' lcov.info > lcov.filtered.info
           mv lcov.filtered.info lcov.info
       - uses: codecov/codecov-action@v5
         with:
