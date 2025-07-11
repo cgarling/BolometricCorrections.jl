@@ -51,9 +51,13 @@ jobs:
         env:
           DATADEPS_ALWAYS_ACCEPT: 'true'
       - uses: julia-actions/julia-processcoverage@v1
+      - name: Drop doc‐only function stubs
+        run: |
+          grep -vE '^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$' lcov.info \
+            > lcov.filtered.info
       - uses: codecov/codecov-action@v5
         with:
-          files: lcov.info
+          files: lcov.filtered.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
