@@ -59,7 +59,7 @@ jobs:
           Pkg.add("Coverage")
           using Coverage
           cov = process_folder(pwd())
-          filter!(rec -> !ismatch(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov)
+          filter!(rec -> !match(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov)
           write_coverage_file(cov, "lcov.info")
       - uses: codecov/codecov-action@v5
         with:
