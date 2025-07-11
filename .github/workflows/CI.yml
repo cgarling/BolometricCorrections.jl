@@ -56,7 +56,7 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.add(Coverage)
+          Pkg.add("Coverage")
           using Coverage
           cov = process_folder(pwd())
           filter!(rec -> !ismatch(r"^\s*function\s+\w+\s*\([^)]*\)\s*end\s*$", String(rec.code)), cov)
