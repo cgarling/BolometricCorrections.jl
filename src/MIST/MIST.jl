@@ -180,15 +180,13 @@ julia> using BolometricCorrections.MIST: check_vals
 
 julia> check_vals(-2, 0.0) # Check passes, returns nothing
 
-julia> using Test: @test_throws
+julia> using Test: @test_throws, Pass
 
-julia> @test_throws ArgumentError check_vals(-5, 0.0) # Invalid `mh`, throws error
-Test Passed
-      Thrown: ArgumentError
+julia> @test_throws(ArgumentError, check_vals(-5, 0.0)) isa Pass # Invalid `mh`, throws error
+true
 
-julia> @test_throws ArgumentError check_vals(-2, 100.0) # Invalid `Av`, throws error
-Test Passed
-      Thrown: ArgumentError
+julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) # Invalid `Av`, throws error
+true
 ```
 """
 function check_vals(feh, Av)
