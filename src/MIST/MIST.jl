@@ -185,7 +185,7 @@ julia> using Test: @test_throws, Pass
 julia> @test_throws(ArgumentError, check_vals(-5, 0.0)) isa Pass # Invalid `mh`, throws error
 true
 
-julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) # Invalid `Av`, throws error
+julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) isa Pass # Invalid `Av`, throws error
 true
 ```
 """
