@@ -3,6 +3,9 @@
 This package enables interaction with grids and tables of stellar [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction). Different grids/libraries are supported through submodules. Currently supported model grids with accompanying submodules are
 
  - [Mesa Isochrones and Stellar Tracks (MIST)](@ref MIST) [Dotter2016,Choi2016](@cite)
+ - [YBC](@ref YBC) [Chen2019](@cite), which interpolates between several different BC libaries -- supported sub-libraries are
+   - [PHOENIX](@ref YBCPHOENIX)
+   - [ATLAS9](@ref YBCATLAS9)
 
 ## [Background](@id background)
 A **bolometric correction** is the offset between a star's absolute bolometric magnitude ``M_\text{bol}`` and its absolute magnitude in a specific bandpass or filter ``\lambda``,

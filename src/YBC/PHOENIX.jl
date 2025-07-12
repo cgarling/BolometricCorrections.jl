@@ -154,10 +154,10 @@ of temperature and surface gravity.
 
     PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real)
 
-Loads the data necessary to construct the BC table for the provided `grid` (e.g., "acs_wfc")
+Loads the data necessary to construct the BC table for the provided `grid` (e.g., `"acs_wfc"`)
 at \\[M/H\\] = `mh` and V-band extinction `Av`. This method does not support interpolation 
 in metallicity or extinction, so the arguments `mh` and `Av` must be among the values 
-provided by PHOENIX (see `BolometricCorrections.YBC.PHOENIX.gridinfo`).
+provided by PHOENIX (see `BolometricCorrections.YBC.PHOENIX.gridinfo.MH`).
 
 ```jldoctest
 julia> grid = PHOENIXYBCGrid("acs_wfc")

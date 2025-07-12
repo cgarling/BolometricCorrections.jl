@@ -149,10 +149,10 @@ of temperature and surface gravity.
 
     ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real)
 
-Loads the data necessary to construct the BC table for the provided `grid` (e.g., "acs_wfc") 
+Loads the data necessary to construct the BC table for the provided `grid` (e.g., `"acs_wfc"`) 
 at \\[M/H\\] = `mh` and V-band extinction `Av`. This method does not support interpolation 
 in metallicity or extinction, so the arguments `mh` and `Av` must be among the values 
-provided by ATLAS9 (see `BolometricCorrections.YBC.ATLAS9.gridinfo`).
+provided by ATLAS9 (see `BolometricCorrections.YBC.ATLAS9.gridinfo.MH`).
 
 ```jldoctest
 julia> grid = ATLAS9YBCGrid("acs_wfc")
@@ -282,12 +282,12 @@ ATLAS9YBCTable(grid::ATLAS9YBCTable, mh::Float64, Av::Float64) = ATLAS9YBCTable(
 
 """
     ATLAS9Chemistry()
-Returns a singleton struct representing the [ATLAS9](@citet Castelli2003) chemical mixture model.
+Returns a singleton struct representing the [ATLAS9](@cite Castelli2003) chemical mixture model.
 ATLAS9 assumes the [Grevesse1998](@citet) solar abundances for which photospheric abundances are
 equal to protostellar abundances -- this is what they mean when they write "the effects of element
 migration at the bottom of the convective zone ... are not observed." In ATLAS9, the helium abundance
 is not scaled with the metallicity, so only the hydrogen mass fraction and metal mass fraction change
-as a function of metal abundance (i.e., dY/dZ = 0). See also [Girardi2007](@ref).
+as a function of metal abundance (i.e., dY/dZ = 0). See also [Girardi2007](@citet).
 
 ```jldoctest
 julia> using BolometricCorrections.YBC.ATLAS9: ATLAS9Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;

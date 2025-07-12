@@ -54,11 +54,11 @@ true
 function check_vals(mh, Av, gridinfo::NamedTuple)
     mh_ext = extrema(gridinfo.MH)
     if mh < first(mh_ext) || mh > last(mh_ext)
-        throw(ArgumentError("Provided [M/H] $mh is outside the bounds for the YBC PHOENIX BC tables $mh_ext"))
+        throw(ArgumentError("Provided [M/H] $mh is outside the bounds for the BC grid $mh_ext"))
     end
     Av_ext = extrema(gridinfo.Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(ArgumentError("Provided A_v $Av is outside the bounds for the YBC PHOENIX BC tables $Av_ext"))
+        throw(ArgumentError("Provided A_v $Av is outside the bounds for the BC grid $Av_ext"))
     end
 end
 
