@@ -7,39 +7,38 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry, vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry # Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
-using ..YBC: pull_table, parse_filterinfo, check_prefix
+using ..YBC: pull_table, parse_filterinfo, check_prefix, check_vals, dtype
 
 using ArgCheck: @argcheck
 using Compat: @compat
+using FITSIO: FITS, read_header, colnames
 # using Interpolations: interpolate, extrapolate, Flat, Throw, BSpline, Cubic, Line, OnGrid
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 # import CSV
-using FITSIO: FITS, read_header, colnames
 using Printf: @sprintf # Formatted conversion of floats to strings
-using TypedTables: Table
 using StaticArrays: SVector
+using TypedTables: Table
 
-export PHOENIXYBCTable, PHOENIXYBCGrid, chemistry, filternames
+export PHOENIXYBCTable, PHOENIXYBCGrid
 
 """ `NTuple{5, Symbol}` listing the dependent variables in the YBC.PHOENIX BC grid. """
 const _dependents = (:logTeff, :logg, :MH, :Av, :Rv)
 """ A_v values in files. For each filter "J", each fits file will have columns "J", "J_Av0.5", "J_Av1", and so on."""
-const _Av = (0, 0.5, 1, 2, 5, 10, 20)
+const _Av = (0, 0.5, 1, 2, 5, 10, 20) # Mix of float and integer makes parsing FITS columns easier later
 # const _Av = ["0.5", "1", "2", "5", "10", "20"]
 """ Unique values of [M/H] for the PHOENIX BT-Settl models. """
-const _mh = (-4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, -0.0, 0.3, 0.5)
-const _logTeff = range(3.41f0, 4.85f0; step=0.01f0)
-const _logg = range(-0.5f0, 6.0f0; step=0.5f0)
+const _mh = dtype[-4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, -0.0, 0.3, 0.5]
+const _logTeff = range(convert(dtype, 3.41), convert(dtype, 4.85); step=convert(dtype, 0.01))
+const _logg = range(convert(dtype, -0.5), convert(dtype, 6.0); step=convert(dtype, 0.5))
 
-# User-facing information on the grid 
 """ Unique values for dependent variables in the YBC.PHOENIX bolometric correction grid. Note that `logg = 6` is missing for [M/H] = -2.5, -3, -3.5, -4 """
 const gridinfo = (logTeff = _logTeff,
                   logg = _logg,
                   MH = _mh,
                   Av = _Av,
-                  Rv = (3.1,))
+                  Rv = dtype[3.1])
 @compat public gridinfo
 
 """
@@ -52,42 +51,10 @@ function _parse_filename(f::AbstractString)
     @argcheck occursin("BT-Settl", f)
     mh = split(split(f, "_M")[2], "_a")[1]
     α_fe = split(split(f, "_a")[2], ".BC")[1]
-    return (MH = parse(Float64, mh), α_fe = parse(Float64, α_fe))
-end
-
-"""
-    check_vals(mh, Av)
-
-Validate that [M/H] value `mh` and ``A_V`` value `Av` are valid for the YBC PHOENIX BC grid.
-Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
-
-```jldoctest
-julia> using BolometricCorrections.YBC.PHOENIX: check_vals
-
-julia> check_vals(-2, 0.0) # Check passes, returns nothing
-
-julia> using Test: @test_throws, Pass
-
-julia> @test_throws(ArgumentError, check_vals(-5, 0.0)) isa Pass # Invalid `mh`, throws error
-true
-
-julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) isa Pass # Invalid `Av`, throws error
-true
-```
-"""
-function check_vals(mh, Av)
-    mh_ext = extrema(gridinfo.MH)
-    if mh < first(mh_ext) || mh > last(mh_ext)
-        throw(ArgumentError("Provided [M/H] $mh is outside the bounds for the YBC PHOENIX BC tables $mh_ext"))
-    end
-    Av_ext = extrema(gridinfo.Av)
-    if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(ArgumentError("Provided A_v $Av is outside the bounds for the YBC PHOENIX BC tables $Av_ext"))
-    end
+    return (MH = parse(dtype, mh), α_fe = parse(dtype, α_fe))
 end
 
 #########################################################
-# AbstractBCGrid code
 
 """
     PHOENIXYBCGrid(grid::AbstractString)
@@ -141,12 +108,9 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     if ~mapreduce(isapprox, &, gridinfo.MH, _parse_filename(file).MH for file in files)
         error("File [M/H] values not as expected -- please report.")
     end
-    # Dependent variables "logTeff", "logg" should be the same for all
-    # BT-Settl models. Therefore to interpolate as a function of [M/H] and Av,
-    # we just need to form an array with all the relevant BCs that we can then
-    # interpolate between.
+
     # Read all data and pack into dense matrix
-    data = Matrix{Matrix{Float32}}(undef, length(files), length(gridinfo.Av))
+    data = Matrix{Matrix{dtype}}(undef, length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
         FITS(file, "r") do f
@@ -173,14 +137,14 @@ Base.extrema(::PHOENIXYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(
                                   Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
 chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
-# zeropoints(::MISTBCGrid) = zpt
+# zeropoints(::PHOENIXYBCGrid) = zpt
 
 
 #########################################################
 # A single BC table, with fixed [M/H] and Av
 
 """
-    PHOENIXYBCTable(grid::MISTBCGrid, mh::Real, Av::Real)
+    PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
 
 Interpolates the YBC PHOENIX bolometric corrections in `grid` to a fixed value of \\[M/H\\]
 (`mh`) and V-band extinction (`Av`), leaving only `Teff` and `logg` as dependent
@@ -190,7 +154,10 @@ of temperature and surface gravity.
 
     PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real)
 
-Loads the data necessary to construct the BC table for the provided `grid` (e.g., "acs_wfc") at \\[M/H\\] = `mh` and V-band extinction `Av`. This method does not support interpolation in metallicity or extinction, so the arguments `mh` and `Av` must be among the values provided by PHOENIX (see `BolometricCorrections.YBC.PHOENIX.gridinfo`).
+Loads the data necessary to construct the BC table for the provided `grid` (e.g., `"acs_wfc"`)
+at \\[M/H\\] = `mh` and V-band extinction `Av`. This method does not support interpolation 
+in metallicity or extinction, so the arguments `mh` and `Av` must be among the values 
+provided by PHOENIX (see `BolometricCorrections.YBC.PHOENIX.gridinfo.MH`).
 
 ```jldoctest
 julia> grid = PHOENIXYBCGrid("acs_wfc")
@@ -227,7 +194,7 @@ struct PHOENIXYBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 function PHOENIXYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp, filters)
-    T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
+    T = dtype # T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return PHOENIXYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
 chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistry()
@@ -243,14 +210,14 @@ Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
 # Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table.itp(convert(Float32, logg), log10(convert(Float32, Teff)))
+(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table(convert(Float32, Teff), convert(Float32, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
     grid, prefix = String(grid), String(prefix)
     check_prefix(prefix)
-    @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use YBCPHOENIXGrid for grid interpolation."
-    @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use YBCPHOENIXGrid for grid interpolation."
+    @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use PHOENIXYBCGrid for grid interpolation."
+    @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use PHOENIXYBCGrid for grid interpolation."
     path = pull_table(grid, prefix)
     files = filter(x->occursin("BT-Settl", x), readdir(joinpath(path, "regrid"); join=true))
     if length(files) == 0
@@ -280,12 +247,12 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
 end
 
 function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
-    check_vals(mh, Av)
+    check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
 
-    Av_vec = SVector(gridinfo.Av) # Need vectors to use searchsortedfirst
-    MH_vec = SVector(gridinfo.MH)
+    Av_vec = SVector(gridinfo.Av) # Need vector to use searchsortedfirst
+    MH_vec = gridinfo.MH # SVector(gridinfo.MH)
 
     # Exact values are in grid; no interpolation necessary
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
@@ -342,5 +309,5 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-
+PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Float64, Av::Float64) = PHOENIXYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 end # module

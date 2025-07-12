@@ -322,7 +322,7 @@ export MISTBCGrid, MISTBCTable
 include(joinpath("YBC", "YBC.jl"))
 using .YBC
 @compat public YBC
-export PHOENIXYBCTable, PHOENIXYBCGrid
+export PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
 
 
 end # module
