@@ -275,7 +275,7 @@ function ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return ATLAS9YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-ATLAS9YBCTable(grid::ATLAS9YBCTable, mh::Float64, Av::Float64) = ATLAS9YBCTable(grid, convert(dtype, mh), convert(dtype, Av))
+ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Float64, Av::Float64) = ATLAS9YBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
 
 ##############################

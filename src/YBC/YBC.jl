@@ -73,5 +73,9 @@ using .ATLAS9
 @compat public ATLAS9
 export ATLAS9YBCTable, ATLAS9YBCGrid
 
+include("Koester.jl")
+using .KoesterWD
+# Koester should not be public, don't export, only used internally
+
 
 end # Module
