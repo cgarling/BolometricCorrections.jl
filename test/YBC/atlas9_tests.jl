@@ -6,6 +6,6 @@ for mh in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.MH)...; step=0
     for Av in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.Av)...; step=0.1)
         table = grid(mh, Av)
         @test table isa ATLAS9YBCTable
-        @test table(4250, 1.0) isa AbstractVector # technically SVector but ...
+        @test table(4250.0, 1.0) isa AbstractVector # technically SVector but ...
     end
 end
