@@ -209,8 +209,8 @@ Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)))
 # Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table(convert(Float32, Teff), convert(Float32, logg))
+# Data are naturally Float32 (dtype variable) -- convert Float64 args for faster evaluation (~35% faster)
+(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")

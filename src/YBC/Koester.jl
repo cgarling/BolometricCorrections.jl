@@ -180,7 +180,7 @@ struct KoesterWDYBCTable{A <: Real, B, N} <: AbstractBCTable{A}
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 function KoesterWDYBCTable(Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp, filters)
-    T = promote_type(typeof(Av), eltype(mag_zpt))
+    T = dtype # promote_type(typeof(Av), eltype(mag_zpt))
     return KoesterWDYBCTable(convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
 Base.show(io::IO, z::KoesterWDYBCTable) = print(io, "YBC Koester white dwarf bolometric correction table with for system $(z.name) with V-band extinction ", z.Av)
