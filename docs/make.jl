@@ -42,6 +42,7 @@ makedocs(
                 joinpath("ybc", "ybc.md"),
                 joinpath("ybc", "phoenix.md"),
                 joinpath("ybc", "atlas9.md"),
+                joinpath("ybc", "koester_wd.md"),
                 ],
                   # "Internals" => ["fitting/internals.md",
              #                 "fitting/kernels.md"]],
