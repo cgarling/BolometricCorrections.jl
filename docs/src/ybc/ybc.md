@@ -42,6 +42,15 @@ end
 print_in_columns(YBC.systems, 6) # hide
 ```
 
+## [Chemistry API](@id ybc_chemistry)
+We provide the [`BolometricCorrections.YBC.PARSECChemistry`](@ref) type to access information on the solar chemical abundances assumed for the PARSEC models (see also [Bressan2012](@citet)). These solar abundances are also used by the YBC bolometric correction library.
+
+```@docs
+BolometricCorrections.YBC.PARSECChemistry
+```
+
+Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *photospheric* solar values for `Z⊙` and `X⊙` (these are `Z_⊙` and `X_⊙ = 1 - Z_⊙ - Y_⊙` in Table 3 of [Bressan2012](@citet)). This reproduces the relation between `Z` and \[M/H\] defined in Table 4 of [Bressan2012](@citet), which is also used in the "CMD" webform provided by the PARSEC team.
+
 ## YBC References
 This page cites the following references:
 
