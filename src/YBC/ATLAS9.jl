@@ -70,7 +70,7 @@ julia> grid = ATLAS9YBCGrid("acs_wfc")
 YBC ATLAS9 bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
-YBC ATLAS9 bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
+YBC ATLAS9 bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
 ```
 """
 struct ATLAS9YBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
@@ -159,7 +159,7 @@ julia> grid = ATLAS9YBCGrid("acs_wfc")
 YBC ATLAS9 bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> table = ATLAS9YBCTable(grid, -1.01, 0.011) # Interpolate table from full grid
-YBC ATLAS9 bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
+YBC ATLAS9 bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(4025, 0.01)) == 12 # Returns BC in each filter
 true
@@ -189,7 +189,7 @@ function ATLAS9YBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, na
     T = dtype # promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return ATLAS9YBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
-Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correction table with for system $(z.name) with [M/H] ",
+Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::ATLAS9YBCTable) = table.filters
 # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
