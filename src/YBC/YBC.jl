@@ -77,5 +77,8 @@ include("Koester.jl")
 using .KoesterWD
 # Koester should not be public, don't export, only used internally
 
+include("WMbasic.jl")
+using .WMbasic
+# WMBasic should not be public, don't export, only used internally
 
 end # Module
