@@ -230,7 +230,7 @@ function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
     check_vals(Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
-    Av_vec = SVector(gridinfo.Av) # Need vector to use searchsortedfirst
+    Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     if Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
         submatrix = data[searchsortedfirst(Av_vec, Av)]

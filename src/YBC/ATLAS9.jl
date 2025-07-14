@@ -238,7 +238,7 @@ function ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
     filters = filternames(grid)
     data = grid.data
 
-    Av_vec = SVector(gridinfo.Av) # Need vector to use searchsortedfirst
+    Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     MH_vec = gridinfo.MH
 
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
