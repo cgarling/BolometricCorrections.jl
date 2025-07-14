@@ -189,10 +189,12 @@ Mdot [solMass / yr])` to interpolate the bolometric corrections as a function
 of temperature, surface gravity, and outflow rate.
 
 ```jldoctest
+julia> using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable
+
 julia> grid = WMbasicYBCGrid("acs_wfc")
 YBC WM-basic bolometric correction grid for photometric system YBC/acs_wfc.
 
-julia> table = WMbasicYBCGrid(grid, -1.01, 0.011) # Interpolate table from full grid
+julia> table = WMbasicYBCTable(grid, -1.01, 0.011) # Interpolate table from full grid
 YBC WM-basic bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(25_0254.0, 2.54, 5e-6)) == 12 # Returns BC in each filter
@@ -231,7 +233,7 @@ chemistry(::Type{WMbasicYBCTable}) = PARSECChemistry()
 Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)),
                                    Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
-(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), Mdot)
+(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
 # Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
 (table::WMbasicYBCTable)(Teff::Float64, logg::Float64, Mdot::Float64) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 # to broadcast over both teff and logg, you do table.(teff, logg')
@@ -277,8 +279,9 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     # This works but is type unstable; lift out to other function
     submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
     newdata = repack_submatrix(submatrix)
-    # have to convert logrange Mdot to regular range ...
-    itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff, range(log10(gridinfo.Mdot[1]), log10(gridinfo.Mdot[end]); step=convert(dtype, 1))), newdata; extrapolation_bc=Flat()) # This works, don't love the Mdot conversion
+    # have to convert logrange Mdot to regular range
+    ranges = (gridinfo.logg, gridinfo.logTeff, range(log10(gridinfo.Mdot[1]), log10(gridinfo.Mdot[end]); step=convert(dtype, 1)))
+    itp = cubic_spline_interpolation(ranges, newdata; extrapolation_bc=Flat()) # This works, don't love the Mdot conversion
     return WMbasicYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
 WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Float64, Av::Float64) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
