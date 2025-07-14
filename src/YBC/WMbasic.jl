@@ -4,7 +4,7 @@ YBC submodule exposing the bolometric corrections computed by the YBC team based
 module WMbasic
 
 using ArgCheck: @argcheck
-using Compat: @compat, logrange
+using Compat: @compat, logrange, stack
 using FITSIO: FITS
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using Printf: @sprintf
@@ -99,11 +99,8 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     data = Array{Matrix{dtype}, 3}(undef, length(gridinfo.Z), length(gridinfo.Mdot), length(gridinfo.Av))
     for i in eachindex(gridinfo.Z)
         z = gridinfo.Z[i]
-        # println("-----------------------")
-        # println("Z: ", z)
         for j in eachindex(gridinfo.Mdot)
             mdot = gridinfo.Mdot[j]
-            println("Z: ", z, " Mdot: ", mdot)
             file = joinpath(path, "regrid", "Avodonnell94Rv3.1WM_Z" * string(z) * "Mdot" * @sprintf("%1i", log10(mdot))[2] * ".BC.fits")
             if !isfile(file)
                 error("YBC WM-basic file $file missing. Data may be corrupted. Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
@@ -117,12 +114,12 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
                     logg = read(f[2], "logg")
                     logTeff = read(f[2], "logTeff")
 
-                    # mat of correct size that we will save
-                    # mat1 = Matrix{dtype}(undef, length(gridinfo.logg), length(gridinfo.logTeff))
+                    # matrix of correct size that we will save
                     mat1 = zeros(dtype, length(gridinfo.logg) * length(gridinfo.logTeff), length(filternames))
-                    # mat of irregular size due to irregular sampling of logteff, logg
+                    # matrix of irregular size due to irregular sampling of logteff, logg
                     mat2 = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
 
+                    # Write data from mat2 into mat1 depending on logg, logTeff values
                     for ii in eachindex(logg, logTeff)
                         mati = searchsortedfirst(gridinfo.logg, logg[ii])
                         matj = searchsortedfirst(gridinfo.logTeff, logTeff[ii])
@@ -132,40 +129,11 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
                     # 4 special cases; logg=2.5 missing, logg=5.5 missing, logg=6.0 missing, logTeff = 4.3 missing
                     u_logg = unique(logg)
                     u_logTeff = unique(logTeff)
-                    # for lgi in findall(lg ∉ u_logg for lg in gridinfo.logg)
-                    #     # println([lgi + length(gridinfo.logg) * N for N in 0:(length(gridinfo.logTeff))])
-                    #     for ii in [lgi + length(gridinfo.logg) * N for N in 0:(length(gridinfo.logTeff) - 1)]
-                    #         # println(ii)
-                    #         if checkbounds(Bool, mat1, ii + 1, 1)
-                    #             # Use same temperature, next value of logg (for logg=2.5 missing)
-                    #             # println("yep1")
-                    #             jj = findfirst(!=(0), mat1[ii:end, 1])
-                    #             if isnothing(jj)
-                    #                 jj = ii - 1
-                    #             else
-                    #                 jj += ii
-                    #             end
-                    #             mat1[ii, :] .= mat1[jj, :]
-                    #             # if mat1[ii + 1, 1] != 0
-                    #             #     mat1[ii, :] .= mat1[ii + 1, :]
-                    #             # else
-                    #             #     mat1[ii, :] .= mat1[ii - 1, :]
-                    #             # end
-                    #         elseif checkbounds(Bool, mat1, ii - 1, 1)
-                    #             # Use same temperature, last value of logg (for log=5.5, 6.0 missing)
-                    #             println("yep2")
-                    #             mat1[ii, :] .= mat1[ii - 1, :]
-                    #         else
-                    #             println("failed")
-                    #         end
-                    #     end
-                    # end
                     if 2.5f0 ∉ u_logg
                         for ii in [1 + length(gridinfo.logg) * N for N in 0:(length(gridinfo.logTeff) - 1)]
                             # Average of same temperature, next logg and same logg, next temperature
-                            # mat1[ii, :] .= (mat1[2, :] .+ mat1[ii + length(gridinfo.logg), :]) ./ 2
-                            # Actually, just use same temperature, next logg
-                            mat1[ii, :] .= mat1[ii + 1, :]
+                            # mat1[ii, :] .= (mat1[ii + 1, :] .+ mat1[ii + length(gridinfo.logg) - 1, :]) ./ 2
+                            mat1[ii, :] .= mat1[ii + 1, :] # same temperature, next logg
                         end
                     end
                     if 5.5f0 ∉ u_logg
@@ -179,15 +147,10 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
                         end
                     end
                     if 4.3f0 ∉ u_logTeff
-                        # for ii in [1 + length(gridinfo.logTeff) * N for N in 0:(length(gridinfo.logg) - 1)]
                         for ii in 1:length(gridinfo.logg)
                             mat1[ii, :] .= mat1[ii + length(gridinfo.logg), :] # Use next temperature, same logg
                         end
                     end
-
-                    # println(size(mat))
-                    # println("logg: ", unique(read(f[2], "logg")))
-                    # println("logTeff: ", unique(read(f[2], "logTeff")))
                     data[i,j,k] = mat1
                 end
             end
@@ -278,7 +241,7 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     filters = filternames(grid)
     data = grid.data
 
-    Av_vec = SVector(gridinfo.Av) # Need vector to use searchsortedfirst
+    Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     MH_vec = gridinfo.MH
 
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
@@ -290,13 +253,13 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             vecmat1 = data[MH_idx, :, Av_idx] # Vector{Matrix} of length gridinfo.Mdot
             vecmat2 = data[MH_idx, :, Av_idx + 1]
-            submatrix = [interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2)]
+            submatrix = stack(interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
         elseif Av ∈ gridinfo.Av
             Av_idx = searchsortedfirst(Av_vec, Av)
             MH_idx = searchsortedfirst(MH_vec, mh) - 1
             vecmat1 = data[MH_idx, :, Av_idx]
             vecmat2 = data[MH_idx + 1, :, Av_idx]
-            submatrix = [interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2)]
+            submatrix = stack(interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
         else
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             Av1, Av2 = Av_vec[Av_idx], Av_vec[Av_idx + 1]
@@ -308,14 +271,15 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             vecmat1_2 = data[MH_idx, :, Av_idx + 1]
             vecmat2_2 = data[MH_idx + 1, :, Av_idx + 1]
             # Perform bilinear interpolation
-            submatrix = [interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1)]
+            submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
         end
     end
-    return submatrix
-    # Need to check dimensionality for repack_submatrix
-    # newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
-    # itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
-    # return ATLAS9YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
+    # This works but is type unstable; lift out to other function
+    submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
+    newdata = repack_submatrix(submatrix)
+    # have to convert logrange Mdot to regular range ...
+    itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff, range(log10(gridinfo.Mdot[1]), log10(gridinfo.Mdot[end]); step=convert(dtype, 1))), newdata; extrapolation_bc=Flat()) # This works, don't love the Mdot conversion
+    return WMbasicYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
 WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Float64, Av::Float64) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
