@@ -19,6 +19,19 @@ using BolometricCorrections
 keys(BolometricCorrections.YBC.PHOENIX.gridinfo)
 ```
 
+```@example
+using BolometricCorrections # hide
+include(joinpath(@__DIR__, "..", "plots.jl")) # hide
+grid = PHOENIXYBCGrid("jwst_nircam_wide") # hide
+# Teff = range(extrema(grid).Teff[1], 10_000; length=1000) # hide
+Teff = logrange(exp10(3.5), 10_000; length=1000) # hide
+logg = range(extrema(grid).logg...; length=1000) # hide
+f, ax = plot_bc_table(grid(-1, 0), "F090W", Teff, logg) # hide
+ax.title = "YBC PHOENIX BCs for JWST/NIRCam F090W" # hide
+text!(ax, 0.95, 0.95, text="[M/H] = -1\n Av = 0", align=(:right, :top), space=:relative) # hide
+f # hide
+```
+
 ## Types
 
 ```@docs

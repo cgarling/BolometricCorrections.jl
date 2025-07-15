@@ -1,16 +1,15 @@
 using CairoMakie # CairoMakie re-exports Makie
+using BolometricCorrections
 using BolometricCorrections: AbstractBCGrid, AbstractBCTable, filternames
 using BolometricCorrections.YBC.KoesterWD: KoesterWDYBCGrid
 set_theme!(theme_latexfonts(); 
-           fontsize = 20,
-           size = (600, 600),
+           fontsize = 25,
+           size = (700, 600),
            Axis = (xticks = Makie.LinearTicks(5),
                    yticks = Makie.LinearTicks(7),
-                   # xticks=Makie.WilkinsonTicks(10; k_min=5, k_max=5),
-                   # yticks=Makie.WilkinsonTicks(5; k_min=5, k_max=5)))
-                   # xminorticks=Makie.IntervalsBetween(5),
                    xminorticksvisible=true),
-            Scatter = (strokecolor=:black, strokewidth=1))
+            Scatter = (strokecolor=:black, strokewidth=1),
+            Colorbar = (ticks = Makie.LinearTicks(7),))
                    # xminorgridvisible=true, 
                    # yminorgridvisible=true))
 
