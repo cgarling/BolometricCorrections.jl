@@ -54,7 +54,3 @@ deploydocs(;
     versions = ["stable" => "v^", "v#.#"],
     push_preview=true,
 )
-
-# Re-enable initial backend
-plt.matplotlib.use(backend)
-nothing
