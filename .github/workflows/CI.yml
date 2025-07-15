@@ -95,12 +95,3 @@ jobs:
           DATADEPS_ALWAYS_ACCEPT: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - name: Run doctests
-        shell: julia --project=docs --color=yes {0}
-        run: |
-          using Documenter: DocMeta, doctest
-          using BolometricCorrections
-          DocMeta.setdocmeta!(BolometricCorrections, :DocTestSetup, :(using BolometricCorrections); recursive=true)
-          doctest(BolometricCorrections)
-        env:
-          DATADEPS_ALWAYS_ACCEPT: 'true'
