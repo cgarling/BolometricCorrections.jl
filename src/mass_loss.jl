@@ -17,7 +17,7 @@ Note that their model grid assumed ``Z_\\odot = 0.013`` following [Asplund2009](
 \\text{log} \\left( \\dot{M} \\right) = A + B \\, \\text{log} \\left( \\frac{ \\text{Z}_* }{ \\text{Z}_\\odot } \\right) + \\left[ C + D \\, \\text{log} \\left( \\frac{ \\text{Z}_* }{ \\text{Z}_\\odot } \\right) \\right] \\, \\left[ \\text{log} \\left( L_* \\right) - E \\right]
 ```
 
-This model was found to be a better fit to the low-metallicity data of [Telford2024](@citet) than the more commonly used [Vink2001](@citet) model.
+This model was found to be a better fit to the low-metallicity data of [Telford2024](@citet) and [Hawcroft2024](@citet) than the more commonly used [Vink2001](@citet) model.
 
 Instances are callable with `(Z, logL)` arguments and **return the mass-loss rate in solar masses per year**, where `Z` is metal mass fraction and `logL` is the base-10 logarithm of the star's luminosity in units of solar luminosities.
 

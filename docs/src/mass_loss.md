@@ -1,8 +1,8 @@
 # [Stellar Mass Loss Rates](@id mass_loss)
 
-Some BC grids for high-mass stars include the stellar mass-loss (outflow) rate as an additional dependent parameter (e.g., the **YBC WM-basic grid**). To use these grids, we must be able to calculate stellar mass loss rates from a star's other parameters as mass-loss rates are not typically tracked self-consistently in stellar interior models. Most implementations employ scaling relations between the mass-loss rate and parameters like the stellar metallicity and luminosity for radiation-driven winds typical in high-mass O and B stars. We include a few such models below.
+Some BC grids for high-mass stars include the stellar mass-loss (outflow) rate as an additional dependent parameter (e.g., the **YBC WM-basic grid**). To use these grids, we must be able to calculate stellar mass loss rates from a star's other parameters as mass-loss rates are not typically tracked self-consistently in stellar interior models. Most implementations employ scaling relations between the mass-loss rate and parameters like the stellar metallicity and luminosity for radiation-driven winds typical in high-mass O and B stars. For example, PARSEC uses multiple different scaling relations to determine the stellar mass-loss rate depending on the phase of stellar evolution, including [Vink2001](@citet) -- see section 2.3 of [Tang2014](@citet) for more details. We include a few such models below.
 
-
+## Björklund 2021
 ```@docs
 BolometricCorrections.Bjorklund2021MassLoss
 ```
@@ -26,7 +26,6 @@ end
 axislegend(ax, position=:lt)
 fig
 ```
-
 
 
 ## Mass Loss References
