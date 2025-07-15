@@ -81,19 +81,68 @@ All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` 
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
-function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
-    @argcheck axes(Teff) == axes(logg)
-    @argcheck length(Teff) != 0
+# function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+#     @argcheck axes(Teff) == axes(logg)
+#     @argcheck length(Teff) != 0
+#     filters = filternames(table)
+#     U = promote_type(T, S, V)
+#     if isbitstype(U)
+#         return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+#     else
+#         return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
+#         # This hcat's into SMatrix which we don't want
+#         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
+#     end
+# end
+# function (table::AbstractBCTable{T})(args...) where {T}
+# function (table::AbstractBCTable{T})(arg1::AbstractArray{<:Real}, args::AbstractArray{<:Real}...) where {T}
+#     @argcheck length(args) >= 1 "Requires at least 2 input arrays (Teff, logg)."
+#     a1_axes = axes(arg1)
+#     N = length(arg1)
+#     # @argcheck all(x -> axes(x) == a1_axes, args)
+#     @argcheck all(Base.Fix1(==, a1_axes), axes(arg) for arg in args)
+#     @argcheck N != 0 "Input arrays must have length > 0."
+
+#     idxs = eachindex(arg1, args...)
+#     filters = filternames(table)
+#     return
+
+#     if isbitstype(T)
+#         # return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+#         # return [table(arg1[i], map(Base.Fix2(getindex, i), args)...) for i in idxs]
+#         return reshape(reinterpret(T, [table(arg1[i], map(Base.Fix2(getindex, i), args)...) for i in idxs]), length(filters), N)
+
+#     else
+#         return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
+#         # This hcat's into SMatrix which we don't want
+#         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
+#     end
+# end
+# function (table::AbstractBCTable{T})(args...) where T
+#     return table(convert(Vector{T}, arg) for arg in args)
+# end
+function (table::AbstractBCTable{T})(args::Vararg{<:AbstractArray{<:Real}, N}) where {T, N}
+    @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
+    a1_axes = axes(first(args))
+    Nelements = length(first(args))
+    # @argcheck all(x -> axes(x) == a1_axes, args)
+    @argcheck all(Base.Fix1(==, a1_axes), axes(arg) for arg in args)
+    @argcheck Nelements != 0 "Input arrays must have length > 0."
+
+    idxs = eachindex(args...)
     filters = filternames(table)
-    U = promote_type(T, S, V)
-    if isbitstype(U)
-        return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+
+    if isbitstype(T) # Might fail on interpolation, but try anyway
+        return reshape(reinterpret(T, [table(map(Base.Fix2(getindex, i), args)...) for i in idxs]), length(filters), Nelements)
     else
-        return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
+        return reduce(hcat, [table(map(Base.Fix2(getindex, i), args)...) for i in idxs])
         # This hcat's into SMatrix which we don't want
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
+
+
+
 function (table::AbstractBCTable)(::Type{Table},
                                   Teff::AbstractArray{<:Real},
                                   logg::AbstractArray{<:Real})
