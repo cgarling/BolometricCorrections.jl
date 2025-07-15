@@ -13,6 +13,8 @@ import TypedTables: Table, columnnames, columns, getproperties
 
 # Interpolation utilities
 include("interp.jl")
+# Stellar mass loss models
+include("mass_loss.jl")
 
 """All basic hardware numeric types supported by Julia."""
 const AllHardwareNumeric = Union{Int8, Int16, Int32, Int64, Int128,

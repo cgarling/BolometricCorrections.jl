@@ -46,6 +46,7 @@ makedocs(
                 ],
                   # "Internals" => ["fitting/internals.md",
              #                 "fitting/kernels.md"]],
+             "mass_loss.md",
              "api.md",
              "refs.md",
              "doc_index.md"],

@@ -22,7 +22,7 @@ grid = KoesterWDYBCGrid("jwst_nircam_wide") # hide
 Teff = logrange(exp10(3.7), 10_000; length=1000) # hide
 logg = range(extrema(grid).logg...; length=1000) # hide
 f, ax = plot_bc_table(grid(0), "F090W", Teff, logg) # hide
-ax.title = "YBC ATLAS9 BCs for JWST/NIRCam F090W" # hide
+ax.title = "YBC KoesterWD BCs for JWST/NIRCam F090W" # hide
 text!(ax, 0.95, 0.95, text="Av = 0", align=(:right, :top), space=:relative) # hide
 f # hide
 ```

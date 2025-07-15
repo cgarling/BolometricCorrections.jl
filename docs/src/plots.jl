@@ -30,7 +30,6 @@ end
 # AbstractBCTable method
 function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff::AbstractVector, logg::AbstractVector)
     # We'll plot Teff decreasing from left to right
-    println("running")
     if !issorted(Teff; rev=true)
         Teff = sort(Teff; rev=true)
     end
