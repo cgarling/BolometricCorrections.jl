@@ -18,8 +18,9 @@ logL = range(6-1.4, 6; length=100)
 Mdot = model.(Zvals, logL') # Makes matrix with size (length(Zvals), length(logL))
 
 fig = Figure()
-ax = Axis(fig[1, 1], xlabel=L"\text{log} \left( \frac{L}{10^6 \, L_\odot} \right)", ylabel=L"\text{log} \left( \frac{\dot{\text{M}}}{\text{M}_\odot \, \text{yr}^{-1}} \right)", yticks = -9:1:-6, xticks = -1.4:0.2:0.0)
-# ylabel=L"$\dot{\text{M}}$ [$\text{M}_\odot$ yr$^{-1}$]" # hide
+# ax = Axis(fig[1, 1], xlabel=L"\log\left(\frac{L}{10^6 \, L_\odot}\right)", ylabel=L"\log \left( \frac{\dot{\text{M}}}{\text{M}_\odot \, \text{yr}^{-1}} \right)", yticks = -9:1:-6, xticks = -1.4:0.2:0.0) # hide
+ax = Axis(fig[1, 1], xlabel=L"\log (\text{L} \ \left[ \text{L}_\odot \right]) - 6", ylabel=L"\log \left( \dot{\text{M}} \ \left[ \text{M}_\odot \ \text{yr}^{-1} \right] \right)", yticks = -9:1:-6, xticks = -1.4:0.2:0.0)
+# Label(fig[2, 1], L"\log \left(\frac{L}{10^6 \, L_\odot}\right)"; halign = :center, valign = :bottom, padding = (0, 0, 5, 0), tellwidth = false) # hide
 for i in eachindex(Zvals, labels)
     lines!(ax, logL .- 6, log10.(Mdot[i, :]), label=labels[i])
 end
