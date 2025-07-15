@@ -14,18 +14,18 @@ set_theme!(theme_latexfonts();
                    # yminorgridvisible=true))
 
 # For AbstractBCGrid argument, create table and call AbstractBCTable method
-function plot_bc_table(grid::AbstractBCGrid, filtername::AbstractString, mh::Number, Av::Number, args...)
-    table = grid(mh, Av)
-    return plot_bc_table(table, filtername, args...)
-end
-# KoesterWDGrid does not take MH argument
-function plot_bc_table(grid::KoesterWDYBCGrid, filtername::AbstractString, Av::Number, args...)
-    table = grid(Av)
-    return plot_bc_table(table, filtername, args...)
-end
-function plot_bc_table(grid::KoesterWDYBCGrid, filtername::AbstractString, mh::Number, Av::Number, args...)
-    return plot_bc_table(grid, filtername, Av, args...)
-end
+# function plot_bc_table(grid::AbstractBCGrid, filtername::AbstractString, mh::Number, Av::Number, args...)
+#     table = grid(mh, Av)
+#     return plot_bc_table(table, filtername, args...)
+# end
+# # KoesterWDGrid does not take MH argument
+# function plot_bc_table(grid::KoesterWDYBCGrid, filtername::AbstractString, Av::Number, args...)
+#     table = grid(Av)
+#     return plot_bc_table(table, filtername, args...)
+# end
+# function plot_bc_table(grid::KoesterWDYBCGrid, filtername::AbstractString, mh::Number, Av::Number, args...)
+#     return plot_bc_table(grid, filtername, Av, args...)
+# end
 
 # AbstractBCTable method
 function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff::AbstractVector, logg::AbstractVector)

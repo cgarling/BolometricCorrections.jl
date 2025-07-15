@@ -181,11 +181,11 @@ chemistry(::Type{WMbasicYBCGrid}) = PARSECChemistry()
     WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
 
 Interpolates the YBC WM-basic bolometric corrections in `grid` to a fixed value of \\[M/H\\]
-(`mh`), V-band extinction (`Av`), leaving only `Teff`, `logg`, and `Mdot as dependent
+(`mh`), V-band extinction (`Av`), leaving only `Teff`, `logg`, and `Mdot` as dependent
 variables (the YBC WM-basic BCs have only one `Rv` value).
 Returns an instance that is callable with arguments `(Teff [K], logg [cgs], 
 Mdot [solMass / yr])` to interpolate the bolometric corrections as a function
-of temperature, surface gravity, and outflow rate.
+of temperature, surface gravity, and mass outflow rate.
 
 ```jldoctest
 julia> using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable
