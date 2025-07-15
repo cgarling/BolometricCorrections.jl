@@ -70,7 +70,9 @@ grid variables (\\[M/H\\], Av). This can be done either by calling an instance o
 `WMbasicYBCGrid` with `(mh, Av)` arguments or by using the appropriate constructor for [`WMbasicYBCTable`](@ref).
 
 ```jldoctest
-julia> grid = WMbasicYBCTable("acs_wfc")
+julia> using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid
+
+julia> grid = WMbasicYBCGrid("acs_wfc")
 YBC WM-basic bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
@@ -221,7 +223,7 @@ function WMbasicYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, n
     T = dtype # promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return WMbasicYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
-Base.show(io::IO, z::WMbasicYBCTable) = print(io, "YBC WM-basic bolometric correction table with for system $(z.name) with [M/H] ",
+Base.show(io::IO, z::WMbasicYBCTable) = print(io, "YBC WM-basic bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::WMbasicYBCTable) = table.filters
 # zeropoints(table::WMbasicYBCTable) = table.mag_zpt

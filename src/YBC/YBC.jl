@@ -79,7 +79,7 @@ full solar calibration assumed for PARSEC is given in Table 3 of [Bressan2012](@
 The distribution of heavy metals is taken from [Grevesse1998](@citet) and [Caffau2011](@citet) (see section 4 of [Bressan2012](@citet)).
 
 ```jldoctest
-julia> using StellarTracks.PARSEC: PARSECChemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
+julia> using BolometricCorrections.YBC: PARSECChemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
 
 julia> chem = PARSECChemistry();
 

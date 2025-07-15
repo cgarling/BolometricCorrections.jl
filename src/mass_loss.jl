@@ -24,7 +24,7 @@ Instances are callable with `(Z, logL)` arguments and **return the mass-loss rat
 ```jldoctest
 julia> using BolometricCorrections: Bjorklund2021MassLoss
 
-julia> model = Bjorklund2021MassLoss()
+julia> model = Bjorklund2021MassLoss();
 
 julia> model(1e-3, 5) ≈ 1.1311569779109792e-9 # Mdot in solar mass per year
 true
