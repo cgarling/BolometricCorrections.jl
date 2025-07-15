@@ -1,18 +1,21 @@
 module YBC
 
 # using ..BolometricCorrections: @compat
-using ..BolometricCorrections: AbstractChemicalMixture
+using ..BolometricCorrections: AbstractChemicalMixture, AllHardwareNumeric, without
 import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry
 
 using Compat: @compat
 import CSV
 using TypedTables: Table
 
+"""YBC data are stored in FITS files with natural datatype Float32."""
+const dtype = Float32
+const HardwareNumeric = without(dtype, AllHardwareNumeric)
+
 # Code to initialize data storage mechanisms
 include("init.jl")
 
-"""YBC data are stored in FITS files with natural datatype Float32."""
-const dtype = Float32
+
 
 """
     parse_filterinfo(f::AbstractString)
@@ -22,7 +25,6 @@ Given a `filter.info` file from YBC, return a `TypedTables.Table` with the corre
 """
 function parse_filterinfo(f::AbstractString)
     # Contains final column with # <comments>, we don't want these so filter first
-    dtype = Float64
     cleaned = IOBuffer(join(map(line -> split(line, "#")[1], readlines(String(f))), "\n"))
     return CSV.read(cleaned, Table; comment="#", delim=' ', ignorerepeated=true, 
         header=["index", "names", "file", "effective_wavelength", "width", "flux_zeropoint", "photometric_system", "detector_type", "mag_zeropoint", "blank"])

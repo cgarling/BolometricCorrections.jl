@@ -5,7 +5,7 @@ module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
 import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -193,8 +193,8 @@ chemistry(::Type{<:KoesterWDYBCTable}) = missing
 Base.extrema(::KoesterWDYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                      logg = (first(gridinfo.logg), last(gridinfo.logg)))
 (table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-(table::KoesterWDYBCTable)(Teff::Float64, logg::Float64) = table(convert(dtype, Teff), convert(dtype, logg))
+# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
+(table::KoesterWDYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractString="YBC")
@@ -244,6 +244,6 @@ function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return KoesterWDYBCTable(Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Float64) = KoesterWDYBCTable(grid, convert(dtype, Av))
+KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::HardwareNumeric) = KoesterWDYBCTable(grid, convert(dtype, Av))
 
 end # module

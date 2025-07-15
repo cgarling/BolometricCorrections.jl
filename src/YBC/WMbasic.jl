@@ -13,15 +13,15 @@ using StaticArrays: SVector
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry, Z, MH
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry, Z, MH
 
-# export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
+# export ...
 
 """ `NTuple{6, Symbol}` listing the dependent variables in the YBC.WMbasic BC grid. """
 const _dependents = (:logTeff, :logg, :Z, :Mdot, :Av, :Rv)
 """ A_v values in files. For each filter "J", each fits file will have columns "J", "J_Av0.5", "J_Av1", and so on."""
 const _Av = (0, 0.5, 1, 2, 5, 10, 20) # Mix of float and integer makes parsing FITS columns easier later
-""" Unique values of metal mass fraction Z for the ATLAS9 models. """
+""" Unique values of metal mass fraction Z for the WM-basic models. """
 const _Z = dtype[0.0001, 0.0005, 0.001, 0.004, 0.008, 0.02]
 """Unique values of mass loss range in solar masses per year."""
 const _Mdot = logrange(convert(dtype, 1e-7), convert(dtype, 1e-5), 3) # dtype[1e-5, 1e-6, 1e-7]
@@ -35,7 +35,7 @@ const _logg = range(convert(dtype, 2.5), convert(dtype, 6.0); step=convert(dtype
 # Z = 0.008 logTeff as above, logg=3:0.5:6 for Mdot=1e-7, logg=2.5:0.5:5.5 for Mdot=1e-6, 1e-5
 # Z = 0.02 logTeff as above, logg=2.5:0.5:6.0 for Mdot=1e-7 and 1e-6, logg=2.5:0.5:5.5 for Mdot=1e-5
 
-"""Unique values for dependent variables in the YBC.ATLAS9 bolometric correction grid."""
+"""Unique values for dependent variables in the YBC.WMbasic bolometric correction grid."""
 const gridinfo = (logTeff = _logTeff,
                   logg = _logg,
                   Z = _Z,
@@ -108,7 +108,6 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
             FITS(file, "r") do f
                 for k in eachindex(gridinfo.Av)
                     Av = gridinfo.Av[k]
-                    # println("Av: ", Av)
                     # Figure out FITS file column name for given Av
                     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
                     logg = read(f[2], "logg")
@@ -234,8 +233,8 @@ Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)),
                                    Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
 (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
-# Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-(table::WMbasicYBCTable)(Teff::Float64, logg::Float64, Mdot::Float64) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
+(table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
@@ -276,146 +275,14 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
         end
     end
-    # This works but is type unstable; lift out to other function
     submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
     newdata = repack_submatrix(submatrix)
-    # have to convert logrange Mdot to regular range
+    # have to convert logrange Mdot to regular range for interpolation
     ranges = (gridinfo.logg, gridinfo.logTeff, range(log10(gridinfo.Mdot[1]), log10(gridinfo.Mdot[end]); step=convert(dtype, 1)))
-    itp = cubic_spline_interpolation(ranges, newdata; extrapolation_bc=Flat()) # This works, don't love the Mdot conversion
+    itp = cubic_spline_interpolation(ranges, newdata; extrapolation_bc=Flat())
     return WMbasicYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Float64, Av::Float64) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
+WMbasicYBCTable(grid::WMbasicYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
-
-
-
-# function WMbasicYBCTable(grid::AbstractString, zval::Real, Av::Real, Mdot::Real; prefix::AbstractString="YBC")
-#     grid, prefix = String(grid), String(prefix)
-#     check_prefix(prefix)
-#     @argcheck mapreduce(isapprox(zval), |, gridinfo.Z) "Provided metal mass fraction $zval not in available values $(gridinfo.Z); use WMbasicYBCGrid for grid interpolation."
-#     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use WMbasicYBCGrid for grid interpolation."
-#     path = pull_table(grid, prefix)
-#     files = filter(x->occursin("WM_", x), readdir(joinpath(path, "regrid"); join=true))
-#     if length(files) == 0
-#         error("""No files found for grid $grid in the given YBC directory $prefix. prefix="YBC" has the greatest number of filters and is recommended.""")
-#     elseif length(files) != length(gridinfo.Z) * length(gridinfo.Mdot)
-#         error("Number of files found for grid $grid is $(length(files)), expected $(length(gridinfo.Z)). Data may be corrupted. \\
-#         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
-#     end
-#     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-#     filternames = filterinfo.names
-
-#     # Figure out which file we need for given [M/H]
-#     goodfile = files[findfirst(x -> (x.Z ≈ zval) & (x.Mdot ≈ Mdot), _parse_filename(file) for file in files)]
-#     # Figure out FITS file column name for given Av
-#     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
-#     FITS(goodfile, "r") do f
-#         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-#         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
-#         newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
-#         itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
-#         return WMbasicYBCTable(zval, Av, Mdot, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
-#     end
-# end
-
-    # # Need to loop over FITS files for different Mdot, write into extra dimension of data
-    # data = Array{dtype, 3}(undef, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot))
-    # for i in eachindex(gridinfo.Mdot)
-    #     mdot_str = @sprintf("%1i", log10(gridinfo.Mdot[i]))[2] # Returns something like "-5" for 1f-5, only want "5"
-    # end
-
-#########################################################
-# A single BC table, with fixed [M/H] and Av
-
-# """
-#     WMbasicYBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
-
-# Interpolates the YBC ATLAS9 bolometric corrections in `grid` to a fixed value of \\[M/H\\]
-# (`mh`), V-band extinction (`Av`), leaving only `Teff`, `logg`, and `Mdot as dependent
-# variables (the YBC WM-basic BCs have only one `Rv` value). 
-# Returns an instance that is callable with arguments `(Teff [K], logg [cgs], 
-# Mdot [solMass / yr])` to interpolate the bolometric corrections as a function
-# of temperature, surface gravity, and outflow rate.
-
-# ```jldoctest
-# julia> grid = WMbasicYBCGrid("acs_wfc")
-# YBC WM-basic bolometric correction grid for photometric system YBC/acs_wfc.
-
-# julia> table = WMbasicYBCGrid(grid, -1.01, 0.011) # Interpolate table from full grid
-# YBC WM-basic bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
-
-# julia> length(table(25_0254.0, 2.54)) == 12 # Returns BC in each filter
-# true
-
-# julia> size(table([25_0254.0, 25_0354.0], [2.54, 2.56])) # `table(array, array)` is also supported
-# (12, 2)
-
-# julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
-
-# julia> table(Table, [25_0254.0, 25_0354.0], [2.54, 2.56]) isa Table
-# true
-# ```
-# """
-# struct ATLAS9YBCTable{A <: Real, B, N} <: AbstractBCTable{A}
-#     MH::A
-#     Av::A
-#     mag_zpt::Vector{A}
-#     systems::Vector{String}
-#     name::String
-#     itp::B     # Interpolator object
-#     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
-# end
-# function ATLAS9YBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp, filters)
-#     T = dtype # promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
-#     return ATLAS9YBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
-# end
-# Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correction table with for system $(z.name) with [M/H] ",
-#                                               z.MH, " and V-band extinction ", z.Av)
-# filternames(table::ATLAS9YBCTable) = table.filters
-# # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
-
-# # Interpolations uses `bounds` to return interpolation domain
-# # We will just use the hard-coded grid bounds; extremely fast
-# Base.extrema(::ATLAS9YBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-#                                   logg = (first(gridinfo.logg), last(gridinfo.logg)))
-# (table::ATLAS9YBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# # Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-# (table::ATLAS9YBCTable)(Teff::Float64, logg::Float64) = table(convert(dtype, Teff), convert(dtype, logg))
-# # to broadcast over both teff and logg, you do table.(teff, logg')
-
-# function WMbasicYBCTable(grid::AbstractString, zval::Real, Av::Real, Mdot::Real; prefix::AbstractString="YBC")
-#     grid, prefix = String(grid), String(prefix)
-#     check_prefix(prefix)
-#     @argcheck mapreduce(isapprox(zval), |, gridinfo.Z) "Provided metal mass fraction $zval not in available values $(gridinfo.Z); use WMbasicYBCGrid for grid interpolation."
-#     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use WMbasicYBCGrid for grid interpolation."
-#     path = pull_table(grid, prefix)
-#     files = filter(x->occursin("WM_", x), readdir(joinpath(path, "regrid"); join=true))
-#     if length(files) == 0
-#         error("""No files found for grid $grid in the given YBC directory $prefix. prefix="YBC" has the greatest number of filters and is recommended.""")
-#     elseif length(files) != length(gridinfo.Z) * length(gridinfo.Mdot)
-#         error("Number of files found for grid $grid is $(length(files)), expected $(length(gridinfo.Z)). Data may be corrupted. \\
-#         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
-#     end
-#     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-#     filternames = filterinfo.names
-
-#     # Figure out which file we need for given [M/H]
-#     goodfile = files[findfirst(x -> (x.Z ≈ zval) & (x.Mdot ≈ Mdot), _parse_filename(file) for file in files)]
-#     # Figure out FITS file column name for given Av
-#     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
-#     FITS(goodfile, "r") do f
-#         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-#         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
-#         newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
-#         itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
-#         return WMbasicYBCTable(zval, Av, Mdot, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
-#     end
-# end
-
-#     # # Need to loop over FITS files for different Mdot, write into extra dimension of data
-#     # data = Array{dtype, 3}(undef, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot))
-#     # for i in eachindex(gridinfo.Mdot)
-#     #     mdot_str = @sprintf("%1i", log10(gridinfo.Mdot[i]))[2] # Returns something like "-5" for 1f-5, only want "5"
-#     # end
 
 end # module

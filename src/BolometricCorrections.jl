@@ -14,6 +14,11 @@ import TypedTables: Table, columnnames, columns, getproperties
 # Interpolation utilities
 include("interp.jl")
 
+"""All basic hardware numeric types supported by Julia."""
+const AllHardwareNumeric = Union{Int8, Int16, Int32, Int64, Int128,
+    UInt8, UInt16, UInt32, UInt64, UInt128, Float16, Float32, Float64}
+without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, Base.uniontypes(union))...}
+
 #################################
 # Bolometric correction grid API
 

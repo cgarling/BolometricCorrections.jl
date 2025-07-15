@@ -12,7 +12,7 @@ using StaticArrays: SVector
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
 
@@ -199,8 +199,8 @@ filternames(table::ATLAS9YBCTable) = table.filters
 Base.extrema(::ATLAS9YBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                   logg = (first(gridinfo.logg), last(gridinfo.logg)))
 (table::ATLAS9YBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert Float64 args for faster evaluation (~35% faster)
-(table::ATLAS9YBCTable)(Teff::Float64, logg::Float64) = table(convert(dtype, Teff), convert(dtype, logg))
+# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
+(table::ATLAS9YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
@@ -275,7 +275,7 @@ function ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return ATLAS9YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Float64, Av::Float64) = ATLAS9YBCTable(grid, convert(dtype, mh), convert(dtype, Av))
+ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = ATLAS9YBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
 
 ##############################
