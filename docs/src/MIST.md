@@ -4,9 +4,19 @@ This submodule enables interaction with the bolometric correction (BC) grid rele
 
 ```@setup mist_plotting
 include(joinpath(@__DIR__, "examples", "bc_tables.jl"))
+include(joinpath(@__DIR__, "plots.jl"))
 ```
 ```@example mist_plotting
 plot_mist_bc_table("JWST", "F090W", -1, 0) # hide
+```
+```@example mist_plotting
+grid = MISTBCGrid("JWST") # hide
+Teff = range(extrema(grid).Teff[1], 10_000; length=1000) # hide
+logg = range(extrema(grid).logg...; length=1000) # hide
+f, ax = plot_bc_table(grid(-1, 0), "F090W", Teff, logg) # hide
+ax.title = "MIST BCs for JWST/NIRCam F090W"
+text!(ax, 0.95, 0.95, text="[M/H] = -1\n Av = 0", align=(:right, :top), space=:relative)
+f
 ```
 
 ## [Chemistry](@id MIST_chemistry)
