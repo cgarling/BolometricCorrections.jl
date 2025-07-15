@@ -81,7 +81,7 @@ All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` 
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
-function (table::AbstractBCTable{T})(args::Vararg{<:AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
     @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
     a1_axes = axes(first(args))
     Nelements = length(first(args))
@@ -99,7 +99,7 @@ function (table::AbstractBCTable{T})(args::Vararg{<:AbstractArray{<:Real}, N}) w
     end
 end
 
-function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{<:AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
     filters = filternames(table)
     # Mostly fixed ~3--5 μs runtime cost
     return Table(Tables.table(PermutedDimsArray(table(args...), (2, 1)); header=filters))
