@@ -91,20 +91,18 @@ function (table::AbstractBCTable{T})(args::Vararg{<:AbstractArray{<:Real}, N}) w
     idxs = eachindex(args...)
     filters = filternames(table)
     if isbitstype(T) # Might fail on interpolation, but try anyway
-        return reshape(reinterpret(T, [table(map(Base.Fix2(getindex, i), args)...) for i in idxs]), length(filters), Nelements)
+        return reshape(reinterpret(T, table.(args...)), length(filters), Nelements)
     else
-        return reduce(hcat, [table(map(Base.Fix2(getindex, i), args)...) for i in idxs])
+        return reduce(hcat, table.(args...))
         # This hcat's into SMatrix which we don't want
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
 
-function (table::AbstractBCTable)(::Type{Table},
-                                  Teff::AbstractArray{<:Real},
-                                  logg::AbstractArray{<:Real})
+function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{<:AbstractArray{<:Real}, N}) where {T, N}
     filters = filternames(table)
     # Mostly fixed ~3--5 μs runtime cost
-    return Table(Tables.table(PermutedDimsArray(table(Teff, logg), (2,1)); header=filters))
+    return Table(Tables.table(PermutedDimsArray(table(args...), (2, 1)); header=filters))
     # More expensive due to data copy with permutedims
     # return Table(Tables.table(permutedims(table(Teff, logg)); header=filters))
     # This is correct but the cost of namedtuple creation scales poorly with length of argument
