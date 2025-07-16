@@ -44,3 +44,15 @@ f # hide
 BolometricCorrections.YBC.WMbasic.WMbasicYBCGrid
 BolometricCorrections.YBC.WMbasic.WMbasicYBCTable
 ```
+
+## Chemistry
+
+These models use the same solar chemical abundances as are used for the PARSEC stellar evolutionary library [Bressan2012](@citep), which is represented by the [`BolometricCorrections.YBC.PARSECChemistry`](@ref) type.
+
+## WM-basic References
+This page cites the following references:
+
+```@bibliography
+Pages = ["wm_basic.md"]
+Canonical = false
+```
