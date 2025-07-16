@@ -9,6 +9,7 @@ using FITSIO: FITS
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using Printf: @sprintf
 using StaticArrays: SVector
+using TypedTables: Table
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
@@ -257,6 +258,9 @@ Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
 (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+# Methods to fix method ambiguities
+(::WMbasicYBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+(::WMbasicYBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
