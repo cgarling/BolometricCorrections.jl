@@ -71,13 +71,12 @@ function filternames(::AbstractBCGrid) end
 #################################
 # Bolometric correction table API
 
-""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- should typically only have  dependent variables `logg` and `Teff` remaining. `T` is the data type to use internally and is returned by `eltype`.
+""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables `logg` and `Teff` should remain. Some tables may have additional dependent variables such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. `T` is the data type to use internally and is returned by `eltype`.
 
     (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
-                                Teff::AbstractArray{S},
-                                logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+                                args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
 
-All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method broadcasts the operation over arrays of `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The three-argument version that returns a `Table` has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. 
+Most `AbstractBCTable`s should be callable with `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments. This method broadcasts the operation over arrays of `Teff`, `logg`, and others and formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
