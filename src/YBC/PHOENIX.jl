@@ -7,7 +7,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
 
@@ -202,6 +202,8 @@ Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometr
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
 # zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
+MH(t::PHOENIXYBCTable) = t.MH
+Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast

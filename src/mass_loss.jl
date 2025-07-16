@@ -2,6 +2,7 @@
 
 """Abstract supertype for all models of stellar mass loss."""
 abstract type AbstractMassLoss{T} end
+(m::AbstractMassLoss)(args...) = Mdot(m, args...)
 
 """
     Bjorklund2021MassLoss(A = -555//100, B = 79//100, C = 216//100, D = -32//100, E = 6//1, Zsol = 13//1000)
@@ -46,4 +47,3 @@ function Mdot(m::Bjorklund2021MassLoss, Z, logL)
     logMdot = m.A + m.B * logZ + (m.C + m.D * logZ) * (logL - m.E)
     return exp10(logMdot)
 end
-(m::Bjorklund2021MassLoss)(Z, logL) = Mdot(m, Z, logL)

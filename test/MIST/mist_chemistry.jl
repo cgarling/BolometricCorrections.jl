@@ -1,4 +1,4 @@
-using BolometricCorrections.MIST: MISTChemistry, X, X_phot, Y, Y_phot, Z, Z_phot, MH
+using BolometricCorrections.MIST: MISTChemistry, MISTBCGrid, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 using Test: @test
 
 # Presently the MIST chemistry is a little wonky because the Asplund protostellar abundances
@@ -17,3 +17,13 @@ const chem = MISTChemistry()
 @test MH(chem, 1e-4) ≈ -2.173234648003277 # rtol=rtol
 @test MH(chem, Z(chem, 0.5)) ≈ 0.5 # rtol=rtol
 @test Z(chem, MH(chem, 1e-2)) ≈ 1e-2 # rtol=rtol
+
+grid = MISTBCGrid("JWST")
+for feh in range(extrema(grid).feh...; step=10)
+    table = grid(feh, 0.0)
+    @test MH(table) == feh
+    tchem = chemistry(table)
+    @test Z(table) ≈ Z(tchem, MH(table))
+    @test Y(table) ≈ Y(tchem, Z(table))
+    @test X(table) ≈ X(tchem, Z(table))
+end

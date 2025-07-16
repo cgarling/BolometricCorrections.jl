@@ -11,10 +11,12 @@ import TypedTables: Table, columnnames, columns, getproperties
 # const test = "asdf" # This is exported at the module level
 # export test
 
-# Interpolation utilities
-include("interp.jl")
 # Stellar mass loss models
 include("mass_loss.jl")
+# Parsing values from user input
+include("parsing.jl")
+# Interpolation utilities
+include("interp.jl")
 
 """All basic hardware numeric types supported by Julia."""
 const AllHardwareNumeric = Union{Int8, Int16, Int32, Int64, Int128,
@@ -71,15 +73,22 @@ function filternames(::AbstractBCGrid) end
 #################################
 # Bolometric correction table API
 
-""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables `logg` and `Teff` should remain. Some tables may have additional dependent variables such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. `T` is the data type to use internally and is returned by `eltype`.
+""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables such as `logg` and `Teff` should remain. `T` is the data type to use internally and is returned by `eltype`. Most `AbstractBCTable`s should be callable with scalar `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments `args...` such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. 
+
+    (table::AbstractTable{T})(Teff::Number, logg::Number, args...)
+
+Tables may also be called with a single argument (usually a `NamedTuple`) which has the necessary values stored as -- for example, `arg = (Teff = 2750, logg = 2.5)` could be passed directly to a `AbstractBCTable` without splatting.
+
+    (table::AbstractTable{T})(arg)
+
+We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 
     (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
                                 args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
-
-Most `AbstractBCTable`s should be callable with `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments. This method broadcasts the operation over arrays of `Teff`, `logg`, and others and formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
+(table::AbstractBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg))
 function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
     @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
     a1_axes = axes(first(args))
@@ -251,6 +260,7 @@ chemistry(mix::AbstractBCGrid) = chemistry(typeof(mix))
 Returns the **protostellar** solar hydrogen mass fraction assumed in the provided chemical mixture.
 """
 function X(mix::AbstractChemicalMixture) end
+X(t::Union{AbstractBCTable, AbstractBCGrid}) = 1 - Y(t) - Z(t)
 """
     X_phot(mix::AbstractChemicalMixture)
 Returns the **photospheric** solar hydrogen mass fraction assumed in the provided chemical mixture.
@@ -276,6 +286,7 @@ function Y_p(mix::AbstractChemicalMixture) end
 Returns the **protostellar** solar helium mass fraction. May use [`Z`] internally.
 """
 function Y(mix::AbstractChemicalMixture) end
+Y(t::Union{AbstractBCTable, AbstractBCGrid}) = Y(chemistry(t), Z(t))
 """
     Y_phot(mix::AbstractChemicalMixture)
 Returns the **photospheric** solar helium mass fraction. May use [`Z_phot`] internally.
@@ -318,6 +329,63 @@ function MH(mix::AbstractChemicalMixture, Z) end
 #     @warn "Requested solar photospheric metal mass for chemical mixture model $T. This model does not have a `Z_phot` method implemented, so we are falling back to the protostellar metal mass fraction `Z(mix)`." maxlog=1
 #     return Z(mix) # Fallback for unimplemented Z_phot
 # end
+
+#################################
+# Utilities
+"""
+    Mbol(logL::Number, solmbol::Number=4.74)
+Returns the bolometric magnitude corresponding to the provided logarithmic
+bolometric luminosity `logL` which is provided in units of solar luminosities
+(e.g., `logL = log10(L / L⊙)`). This is given by `Mbol⊙ - 2.5 * logL`; the zeropoint
+of bolometric magnitude scale is defined by the solar bolometric magnitude, which you
+can specify as the second argument. The default (4.74) was recommended by
+IAU [Resolution B2](@cite Mamajek2015).
+"""
+Mbol(logL::Number, solmbol::Number=474//100) = solmbol - 5 * logL / 2
+
+"""
+    logL(Mbol::Number, solmbol::Number=4.74)
+Returns the logarithmic bolometric luminosity in units of solar luminosities
+(e.g., `logL = log10(L / L⊙)`) corresponding to the provided bolometric
+magnitude. This is given by `(Mbol⊙ - Mbol) / 2.5`; the zeropoint
+of bolometric magnitude scale is defined by the solar bolometric magnitude, 
+which you can specify as the second argument. The default (4.74) was recommended
+by IAU [Resolution B2](@cite Mamajek2015).
+"""
+logL(Mbol::Number, solmbol::Number=474//100) = (solmbol - Mbol) / 5 * 2
+
+"""
+    radius(Teff::Number, logL::Number)
+Returns the radius of a star in units of solar radii
+given its effective temperature `Teff` in Kelvin
+and the logarithm of its luminosity in units of solar luminosities
+(e.g., `logL = log10(L / L⊙)`).
+
+Assumes solar properties following [IAU 2015 Resolution B3](@cite Mamajek2015a).
+```jldoctest
+julia> isapprox(BolometricCorrections.radius(5772, 0.0), 1.0; rtol=0.001) # For solar Teff and logL, radius ≈ 1
+true
+```
+"""
+radius(Teff::Number, logL::Number) = sqrt(exp10(logL) / 4 / π / (Teff^2)^2) * 11810222860206199 // 100000000
+# radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / Teff^4) * 1.1810222860206199e8
+# radius(Teff, logl) = sqrt(exp10(logl) * 3.828e26 / 4 / π / 5.6703744191844294e-8 / Teff^4) / 6.957e8
+# radius(Teff, logl) = sqrt(exp10(logl) * UnitfulAstro.Lsun / 4 / π / PhysicalConstants.CODATA2022.StefanBoltzmannConstant / (Teff * UnitfulAstro.K)^4) |> UnitfulAstro.m
+
+"""
+    surface_gravity(M, R)
+Returns the surface gravity of a star in cgs units `cm / s^2`
+given its mass in solar masses and radius in solar radii.
+
+Assumes solar properties following [IAU 2015 Resolution B3](@cite Mamajek2015a).
+```jldoctest
+julia> isapprox(BolometricCorrections.surface_gravity(1, 1), 27420; rtol=0.001) # For solar M and R, g ≈ 27430 cm / s^2
+true
+```
+"""
+surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 1000000000000
+# surface_gravity(M, R) = 27420.011165737313 * M / R^2
+# surface_gravity(M, R) = PhysicalConstants.CODATA2022.G * M * UnitfulAstro.Msun / (R * UnitfulAstro.Rsun)^2 |> UnitfulAstro.cm / UnitfulAstro.s^2
 
 #################################
 # Top-level API exports

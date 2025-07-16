@@ -6,6 +6,11 @@ for mh in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.MH)...; step=0
     for Av in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.Av)...; step=0.1)
         table = grid(mh, Av)
         @test table isa ATLAS9YBCTable
+        @test MH(table) ≈ mh
+        chem = chemistry(table)
+        @test Z(table) ≈ Z(chem, MH(table))
+        @test Y(table) ≈ Y(chem, Z(table))
+        @test X(table) ≈ X(chem, Z(table))
         @test table(4250.0, 1.0) isa AbstractVector # technically SVector but ...
     end
 end

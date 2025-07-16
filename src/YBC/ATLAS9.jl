@@ -193,6 +193,8 @@ Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correcti
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::ATLAS9YBCTable) = table.filters
 # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
+MH(t::ATLAS9YBCTable) = t.MH
+Z(t::ATLAS9YBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast

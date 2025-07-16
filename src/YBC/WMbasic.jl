@@ -11,9 +11,9 @@ using Printf: @sprintf
 using StaticArrays: SVector
 
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry, Z, MH
+using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
+import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry
 
 # export ...
 
@@ -174,7 +174,7 @@ Base.extrema(::WMbasicYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(
                                   Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
 # zeropoints(::WMbasicYBCGrid) = zpt
-chemistry(::Type{WMbasicYBCGrid}) = PARSECChemistry()
+chemistry(::Type{<:WMbasicYBCGrid}) = PARSECChemistry()
 
 #########################################################
 # A single BC table, with fixed [M/H] and Av
@@ -189,7 +189,7 @@ Returns an instance that is callable with arguments `(Teff [K], logg [cgs],
 Mdot [solMass / yr])` to interpolate the bolometric corrections as a function
 of temperature, surface gravity, and mass outflow rate.
 
-```jldoctest
+```jldoctest wmbasic
 julia> using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable
 
 julia> grid = WMbasicYBCGrid("acs_wfc")
@@ -207,6 +207,22 @@ julia> size(table([25_0254.0, 25_0354.0], [2.54, 2.56], [4e-6, 5e-6])) # `table(
 julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
 
 julia> table(Table, [25_0254.0, 25_0354.0], [2.54, 2.56], [4e-6, 5e-6]) isa Table
+true
+
+julia> table((logg = 2.54, Teff = 25_054.0, Mdot = 2e-5)) == table(25_054.0, 2.54, 2e-5) # can use NamedTuple argument
+true
+```
+
+When providing a single argument (like a `NamedTuple`), we support automatic estimation
+of the mass-loss rate from other quantities using [mass loss models](@ref mass_loss).
+An example of this usage is given below using the [`Bjorklund2021MassLoss`](@ref) model,
+which calculates the stellar mass-loss rate from the metallicity (i.e., `Z(table)`)
+and the luminosity `logL`. `logg` and `Teff` are treated normally.
+
+```jldoctest wmbasic
+julia> using BolometricCorrections: Bjorklund2021MassLoss # Load stellar mass-loss model
+
+julia> table(Bjorklund2021MassLoss(), (logg = 2.54, Teff = 25_054.0, logL = 5)) isa AbstractVector
 true
 ```
 """
@@ -227,7 +243,9 @@ Base.show(io::IO, z::WMbasicYBCTable) = print(io, "YBC WM-basic bolometric corre
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::WMbasicYBCTable) = table.filters
 # zeropoints(table::WMbasicYBCTable) = table.mag_zpt
-chemistry(::Type{WMbasicYBCTable}) = PARSECChemistry()
+chemistry(::Type{<:WMbasicYBCTable}) = PARSECChemistry()
+MH(t::WMbasicYBCTable) = t.MH
+Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
@@ -235,6 +253,8 @@ Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)),
                                    Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
 (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
+(table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
+(table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 # to broadcast over both teff and logg, you do table.(teff, logg')
