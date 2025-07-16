@@ -12,6 +12,7 @@ A bolometric correction (BC) is the offset between a star's absolute bolometric 
    - [PHOENIX](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl-agss)
    - [ATLAS9](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/castelli-and-kurucz-atlas)
    - [Koester & Tremblay white dwarf library](http://svo2.cab.inta-csic.es/theory/newov2/index.php)
+   - [WM-basic library of O and B stars](https://gitlab.com/cycyustc/spec_ybc)
 
 This package integrates with [StellarTracks.jl](https://github.com/cgarling/StellarTracks.jl) to interpolate isochrones from stellar tracks and apply bolometric corrections to place the isochrones in the observational magnitude space.
 

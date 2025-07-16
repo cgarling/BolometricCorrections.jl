@@ -338,6 +338,8 @@ zeropoints(::MISTBCTable) = zpt
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg
 Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.itp.knots[2]), logg = extrema(table.itp.itp.knots[1]))
+MH(t::MISTBCTable) = t.feh
+Z(t::MISTBCTable) = Z(chemistry(t), MH(t))
 
 # Extract a subtable out of table where table.feh == feh and table.Av == Av
 function select_subtable(table::Table, feh::Real, Av::Real)

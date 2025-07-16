@@ -1,5 +1,13 @@
 # [API Reference](@id api)
 
+## Utilities
+```@docs
+BolometricCorrections.Mbol(::Number, ::Number)
+BolometricCorrections.logL(::Number, ::Number)
+BolometricCorrections.radius
+BolometricCorrections.surface_gravity
+```
+
 ## BC Grid API
 ```@docs
 BolometricCorrections.AbstractBCGrid
@@ -24,8 +32,8 @@ filternames(::BolometricCorrections.AbstractZeropoints)
 vegamags
 abmags
 stmags
-BolometricCorrections.Mbol
-BolometricCorrections.Lbol
+BolometricCorrections.Mbol(::BolometricCorrections.AbstractZeropoints)
+BolometricCorrections.Lbol(::BolometricCorrections.AbstractZeropoints)
 ```
 
 ## [Chemical Mixture API](@id chemistry_api)

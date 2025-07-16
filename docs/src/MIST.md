@@ -2,11 +2,17 @@
 
 This submodule enables interaction with the bolometric correction (BC) grid released as part of the Mesa Isochrones & Stellar Tracks ([MIST](https://waps.cfa.harvard.edu/MIST/) [Dotter2016,Choi2016](@cite)) project. The MIST BC grid is convenient because it includes a wide range of photometric filters and covers the full range of effective temperature, surface gravity, and metallicity relevant for most applications in stellar evolution. The grid is also *regular* in the dependent variables, greatly simplifying interpolation. The following figure shows a projection of a small portion of the BC table for one choice of metallicity and V-band extinction.
 
-```@setup mist_plotting
-include(joinpath(@__DIR__, "examples", "bc_tables.jl"))
-```
-```@example mist_plotting
-plot_mist_bc_table("JWST", "F090W", -1, 0) # hide
+```@example
+using BolometricCorrections # hide
+include(joinpath(@__DIR__, "plots.jl")) # hide
+grid = MISTBCGrid("JWST") # hide
+# Teff = range(extrema(grid).Teff[1], 10_000; length=1000) # hide
+Teff = logrange(exp10(3.5), 10_000; length=1000) # hide
+logg = range(extrema(grid).logg...; length=1000) # hide
+f, ax = plot_bc_table(grid(-1, 0), "F090W", Teff, logg) # hide
+ax.title = "MIST BCs for JWST/NIRCam F090W" # hide
+text!(ax, 0.95, 0.95, text="[M/H] = -1\n Av = 0", align=(:right, :top), space=:relative) # hide
+f # hide
 ```
 
 ## [Chemistry](@id MIST_chemistry)

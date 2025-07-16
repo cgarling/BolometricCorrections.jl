@@ -3,13 +3,6 @@ using DocumenterCitations: CitationBibliography
 using BolometricCorrections
 # import BolometricCorrections
 
-import PyPlot as plt
-# Use "agg" backend for file output;
-# file output only, no interactivity
-backend = plt.matplotlib.get_backend() # save default backend to re-enable after execution
-plt.matplotlib.use("agg")
-# ENV["MPLBACKEND"] = "agg"
-
 # Check if on CI
 const CI = get(ENV, "CI", nothing) == "true"
 
@@ -43,9 +36,11 @@ makedocs(
                 joinpath("ybc", "phoenix.md"),
                 joinpath("ybc", "atlas9.md"),
                 joinpath("ybc", "koester_wd.md"),
+                joinpath("ybc", "wm_basic.md"),
                 ],
                   # "Internals" => ["fitting/internals.md",
              #                 "fitting/kernels.md"]],
+             "mass_loss.md",
              "api.md",
              "refs.md",
              "doc_index.md"],
@@ -60,7 +55,3 @@ deploydocs(;
     versions = ["stable" => "v^", "v#.#"],
     push_preview=true,
 )
-
-# Re-enable initial backend
-plt.matplotlib.use(backend)
-nothing
