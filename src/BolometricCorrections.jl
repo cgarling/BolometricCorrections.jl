@@ -13,6 +13,13 @@ import TypedTables: Table, columnnames, columns, getproperties
 
 # Interpolation utilities
 include("interp.jl")
+# Stellar mass loss models
+include("mass_loss.jl")
+
+"""All basic hardware numeric types supported by Julia."""
+const AllHardwareNumeric = Union{Int8, Int16, Int32, Int64, Int128,
+    UInt8, UInt16, UInt32, UInt64, UInt128, Float16, Float32, Float64}
+without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, Base.uniontypes(union))...}
 
 #################################
 # Bolometric correction grid API
@@ -64,35 +71,37 @@ function filternames(::AbstractBCGrid) end
 #################################
 # Bolometric correction table API
 
-""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- should typically only have  dependent variables `logg` and `Teff` remaining. `T` is the data type to use internally and is returned by `eltype`.
+""" `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables `logg` and `Teff` should remain. Some tables may have additional dependent variables such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. `T` is the data type to use internally and is returned by `eltype`.
 
     (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
-                                Teff::AbstractArray{S},
-                                logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
+                                args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
 
-All concrete subtypes of `AbstractBCTable` must be callable with `(Teff, logg)` arguments and return the interpolated BCs at those values. This method broadcasts the operation over arrays of `Teff` and `logg` and formats the result into a stacked matrix or a `TypedTables.Table`. The three-argument version that returns a `Table` has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. 
+Most `AbstractBCTable`s should be callable with `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments. This method broadcasts the operation over arrays of `Teff`, `logg`, and others and formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where T = T
-function (table::AbstractBCTable{T})(Teff::AbstractArray{S}, logg::AbstractArray{V}) where {T, S <: Real, V <: Real}
-    @argcheck axes(Teff) == axes(logg)
-    @argcheck length(Teff) != 0
+function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+    @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
+    a1_axes = axes(first(args))
+    Nelements = length(first(args))
+    # @argcheck all(x -> axes(x) == a1_axes, args)
+    @argcheck all(Base.Fix1(==, a1_axes), axes(arg) for arg in args)
+    @argcheck Nelements != 0 "Input arrays must have length > 0."
+    idxs = eachindex(args...)
     filters = filternames(table)
-    U = promote_type(T, S, V)
-    if isbitstype(U)
-        return reshape(reinterpret(U, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)]), length(filters), length(Teff))
+    if isbitstype(T) # Might fail on interpolation, but try anyway
+        return reshape(reinterpret(T, table.(args...)), length(filters), Nelements)
     else
-        return reduce(hcat, [table(Teff[i], logg[i]) for i in eachindex(Teff, logg)])
+        return reduce(hcat, table.(args...))
         # This hcat's into SMatrix which we don't want
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
-function (table::AbstractBCTable)(::Type{Table},
-                                  Teff::AbstractArray{<:Real},
-                                  logg::AbstractArray{<:Real})
+
+function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
     filters = filternames(table)
     # Mostly fixed ~3--5 μs runtime cost
-    return Table(Tables.table(PermutedDimsArray(table(Teff, logg), (2,1)); header=filters))
+    return Table(Tables.table(PermutedDimsArray(table(args...), (2, 1)); header=filters))
     # More expensive due to data copy with permutedims
     # return Table(Tables.table(permutedims(table(Teff, logg)); header=filters))
     # This is correct but the cost of namedtuple creation scales poorly with length of argument

@@ -9,7 +9,7 @@ module PHOENIX
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry # Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
-using ..YBC: pull_table, parse_filterinfo, check_prefix, check_vals, dtype
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -209,8 +209,8 @@ Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10
                                    logg = (first(gridinfo.logg), last(gridinfo.logg)))
 # Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 (dtype variable) -- convert Float64 args for faster evaluation (~35% faster)
-(table::PHOENIXYBCTable)(Teff::Float64, logg::Float64) = table(convert(dtype, Teff), convert(dtype, logg))
+# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
+(table::PHOENIXYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
@@ -251,7 +251,7 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
     filters = filternames(grid)
     data = grid.data
 
-    Av_vec = SVector(gridinfo.Av) # Need vector to use searchsortedfirst
+    Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     MH_vec = gridinfo.MH # SVector(gridinfo.MH)
 
     # Exact values are in grid; no interpolation necessary
@@ -309,5 +309,5 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Float64, Av::Float64) = PHOENIXYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
+PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = PHOENIXYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 end # module

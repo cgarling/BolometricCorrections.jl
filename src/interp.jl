@@ -47,9 +47,28 @@ function repack_submatrix(submatrix::AbstractArray, dim1::Int, dim2::Int, ::NTup
     return repack_submatrix(submatrix, dim1, dim2, Val(N))
 end
 function repack_submatrix(submatrix::AbstractArray{T}, dim1::Int, dim2::Int, ::Val{N}) where {T, N}
-    submatrix = reshape(submatrix,
-                        dim1, # length(logg),
-                        dim2, # length(teff),
-                        N)
+    submatrix = reshape(submatrix, dim1, dim2, N)
     return [SVector{N, T}(view(submatrix,i,j,:)) for i=axes(submatrix,1), j=axes(submatrix,2)]
+end
+
+"""
+repack_submatrix(submatrix::AbstractArray{T},
+                 filters::Union{NTuple{N}, Val{N}}) where {T, N}
+Use static size information (`N`) to reshape `submatrix` for interpolation.
+The last dimension (which must have size `N`) is lifted out of the `submatrix`,
+returning an array with one fewer dimension that contains elements of `SVector{N, T}}`
+for more efficient use with Interpolations.jl.
+
+`submatrix` must already be shaped to have the proper dimensionality for interpolation
+after removal of the last dimension.
+"""
+repack_submatrix(submatrix::AbstractArray) = repack_submatrix(submatrix, Val(size(submatrix)[end]))
+function repack_submatrix(submatrix::AbstractArray{T}, ::Val{N}) where {T, N}
+    @argcheck size(submatrix)[end] == N "Last dimension must be $N"
+    leading_dims = size(submatrix)[begin:end-1]
+    out = Array{SVector{N, T}}(undef, leading_dims...)
+    for I in CartesianIndices(out)
+        out[I] = SVector{N, T}(view(submatrix, I, :)) # out[I] = SVector{N, T}(view(submatrix, Tuple(I)..., :))
+    end
+    return out
 end

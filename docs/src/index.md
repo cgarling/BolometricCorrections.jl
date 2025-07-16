@@ -7,6 +7,7 @@ This package enables interaction with grids and tables of stellar [bolometric co
    - [PHOENIX](@ref YBCPHOENIX)
    - [ATLAS9](@ref YBCATLAS9)
    - [Koester & Tremblay white dwarf library](@ref YBCKoester)
+   - [WM-basic library of O and B stars](@ref YBCWMbasic)
 
 ## [Background](@id background)
 A **bolometric correction** is the offset between a star's absolute bolometric magnitude ``M_\text{bol}`` and its absolute magnitude in a specific bandpass or filter ``\lambda``,
