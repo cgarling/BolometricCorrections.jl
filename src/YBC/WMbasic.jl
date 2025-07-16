@@ -167,7 +167,7 @@ Base.show(io::IO, z::WMbasicYBCGrid) = print(io, "YBC WM-basic bolometric correc
 # # end
 Base.extrema(::WMbasicYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                   logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  # MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
                                   Z = (first(gridinfo.Z), last(gridinfo.Z)), 
                                   Av = (first(gridinfo.Av), last(gridinfo.Av)),
                                   Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
