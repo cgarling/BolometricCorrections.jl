@@ -38,7 +38,7 @@ Base.eltype(::AbstractBCGrid{T}) where T = T
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction grids (e.g., [Fe/H], Av).
 """
-function Base.extrema(::AbstractBCGrid) end
+Base.extrema(grid::AbstractBCGrid) = extrema(typeof(grid)) # Define Base.extrema(::Type{<:Grid}) for individual `Grid` types
 """
     Table(grid::AbstractBCGrid)
 
@@ -128,7 +128,7 @@ end
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction table (e.g., `logg`, `Teff`).
 """
-Base.extrema(::AbstractBCTable)
+Base.extrema(table::AbstractBCTable) = extrema(typeof(table)) # Define Base.extrema(::Type{<:BCTable}) for individual `BCTable` types
 """
     Table(table::AbstractBCTable)
 
@@ -401,7 +401,7 @@ export MISTBCGrid, MISTBCTable
 include(joinpath("YBC", "YBC.jl"))
 using .YBC
 @compat public YBC
-export PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
+export YBCGrid, YBCTable, PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
 
 
 end # module
