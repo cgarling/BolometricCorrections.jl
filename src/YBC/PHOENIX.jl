@@ -130,11 +130,11 @@ Base.show(io::IO, z::PHOENIXYBCGrid) = print(io, "YBC PHOENIX bolometric correct
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::PHOENIXYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:PHOENIXYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                          MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
 chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
 # zeropoints(::PHOENIXYBCGrid) = zpt
@@ -207,9 +207,8 @@ Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                   logg = (first(gridinfo.logg), last(gridinfo.logg)))
-# Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
+Base.extrema(::Type{<:PHOENIXYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                           logg = (first(gridinfo.logg), last(gridinfo.logg)))
 (table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::PHOENIXYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))

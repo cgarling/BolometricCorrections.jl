@@ -127,11 +127,11 @@ Base.show(io::IO, z::ATLAS9YBCGrid) = print(io, "YBC ATLAS9 bolometric correctio
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::ATLAS9YBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:ATLAS9YBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                         logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                         MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                         Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                         Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::ATLAS9YBCGrid) = grid.filters
 # zeropoints(::ATLAS9YBCGrid) = zpt
 
@@ -198,8 +198,8 @@ Z(t::ATLAS9YBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::ATLAS9YBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)))
+Base.extrema(::Type{<:ATLAS9YBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)))
 (table::ATLAS9YBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::ATLAS9YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))

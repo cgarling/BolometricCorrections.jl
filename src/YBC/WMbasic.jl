@@ -162,17 +162,17 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
 end
 (grid::WMbasicYBCGrid)(mh::Real, Av::Real) = WMbasicYBCTable(grid, mh, Av)
 Base.show(io::IO, z::WMbasicYBCGrid) = print(io, "YBC WM-basic bolometric correction grid for photometric system $(z.name).")
-# # function Table(grid::WMbasicYBCGrid)
-# #     data = grid.data
-# #     tables = Vector{Table}(undef, length(data))
-# # end
-Base.extrema(::WMbasicYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Z = (first(gridinfo.Z), last(gridinfo.Z)), 
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+# function Table(grid::WMbasicYBCGrid)
+#     data = grid.data
+#     tables = Vector{Table}(undef, length(data))
+# end
+Base.extrema(::Type{<:WMbasicYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                          MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                          Z = (first(gridinfo.Z), last(gridinfo.Z)), 
+                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                          Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
+                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
 # zeropoints(::WMbasicYBCGrid) = zpt
 chemistry(::Type{<:WMbasicYBCGrid}) = PARSECChemistry()
@@ -250,9 +250,9 @@ Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                   logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                   Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
+Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                           logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                           Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
 (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
 (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
