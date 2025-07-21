@@ -205,7 +205,7 @@ end
 function YBCGrid(grid::AbstractString;
                  mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss(),
                  prefix::AbstractString="YBC",
-                 phoenix_transition=(Teff=(5500f0, 6500f0), logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
+                 phoenix_transition=(Teff=(5500f0, 6500f0),), # logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
                  wmbasic_transition=(Teff=(18000f0, 20000f0), logg=(2.5f0, 3.5f0), Mdot=(-Inf32, 1f-8)),
                  koester_transition=(Teff=(5800f0, 6300f0), logg=(5.0f0, 6.0f0)))
 
@@ -314,15 +314,25 @@ function Base.extrema(::Type{<:YBCTable})
     ex = _ybc_extrema
     return (Teff = ex.Teff, logg = ex.logg, Mdot = ex.Mdot)
 end
-# (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
-# (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
+
+(table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
+function (table::YBCTable)(Teff::Real, logg::Real, Mdot::Real)
+    transitions = table.transitions
+    phoenix = transitions.phoenix
+    if Teff <= first(phoenix.Teff)
+        # return phoenix
+    elseif first(phoenix.Teff) <= Teff <= last(phoenix.Teff)
+        # Interpolate between phoenix and atlas
+    end
+end
+(table::YBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 # (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-# (table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+(table::YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 # # Methods to fix method ambiguities
-# (::WMbasicYBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
-# (::WMbasicYBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
-# # to broadcast over both teff and logg, you do table.(teff, logg')
+# (::YBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+# (::YBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+# to broadcast over both teff and logg, you do table.(teff, logg')
 
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
     check_vals(mh, Av, extrema(grid))
