@@ -16,7 +16,7 @@ using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGri
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry
 
-# export ...
+# export WMbasicYBCTable, WMbasicYBCGrid
 
 """ `NTuple{6, Symbol}` listing the dependent variables in the YBC.WMbasic BC grid. """
 const _dependents = (:logTeff, :logg, :Z, :Mdot, :Av, :Rv)

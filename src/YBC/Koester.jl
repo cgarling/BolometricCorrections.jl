@@ -13,7 +13,7 @@ using FITSIO: FITS
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
-# export ...
+# export KoesterWDYBCTable, KoesterWDYBCGrid
 
 """ `NTuple{4, Symbol}` listing the dependent variables in the YBC.KoesterWD BC grid. """
 const _dependents = (:logTeff, :logg, :Av, :Rv)

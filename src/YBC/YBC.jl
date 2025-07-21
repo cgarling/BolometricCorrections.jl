@@ -1,11 +1,12 @@
 module YBC
 
 # using ..BolometricCorrections: @compat
-using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry
+using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp2d, interp1d
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, filternames, zeropoints
 
 using Compat: @compat
 import CSV
+using StaticArrays: SVector, sacollect
 using TypedTables: Table
 
 """YBC data are stored in FITS files with natural datatype Float32."""
@@ -38,8 +39,7 @@ check_prefix(prefix) = prefix != "YBC" ? throw(ArgumentError("""prefix = $prefix
     check_vals(mh, Av, gridinfo::NamedTuple)
 
 Validate that [M/H] value `mh` and ``A_V`` value `Av` are valid for the YBC with grid information `gridinfo`.
-This function expects the available [M/H] values to be `gridinfo.MH` and A_v values to be `gridinfo.Av`.
-Submodules define 2-argument `check_vals` that use their own `gridinfo` transparently.
+This function expects the available [M/H] values to be `gridinfo.MH` and ``A_V`` values to be `gridinfo.Av`.
 Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
 
 ```jldoctest
@@ -188,9 +188,14 @@ julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M
 YBC bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
 ```
 """
+# struct YBCGrid{AA <: Number, A1, A2, A3, A4, B, C <: AbstractMassLoss, D <: AbstractVector{AA}, N} <: AbstractBCGrid{AA}
 struct YBCGrid{AA <: Number, A, B, C <: AbstractMassLoss, D <: AbstractVector{AA}, N} <: AbstractBCGrid{AA}
     grids::A
-    transitions::B
+    # phoenix::A1
+    # atlas9::A2
+    # wmbasic::A3
+    # koester::A4
+    limits::B
     mass_loss_model::C
     mag_zpt::D
     systems::Vector{String}
@@ -198,25 +203,33 @@ struct YBCGrid{AA <: Number, A, B, C <: AbstractMassLoss, D <: AbstractVector{AA
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 
-function YBCGrid(grids, transitions, mass_loss_model, mag_zpt, systems, name, filternames)
-    return YBCGrid(grids, transitions, mass_loss_model, mag_zpt, String.(systems), String(name), tuple(Symbol.(filternames)...))
+function YBCGrid(grids, limits, mass_loss_model, mag_zpt, systems, name, filternames)
+    return YBCGrid(grids, limits, mass_loss_model, mag_zpt, String.(systems), String(name), tuple(Symbol.(filternames)...))
 end
+# function YBCGrid(phoenix, atlas9, wmbasic, koester, limits, mass_loss_model, mag_zpt, systems, name, filternames)
+#     return YBCGrid(phoenix, atlas9, wmbasic, koester, limits, mass_loss_model, mag_zpt, String.(systems), String(name), tuple(Symbol.(filternames)...))
+# end
 
 function YBCGrid(grid::AbstractString;
                  mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss(),
                  prefix::AbstractString="YBC",
-                 phoenix_transition=(Teff=(5500f0, 6500f0),), # logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
-                 wmbasic_transition=(Teff=(18000f0, 20000f0), logg=(2.5f0, 3.5f0), Mdot=(-Inf32, 1f-8)),
-                 koester_transition=(Teff=(5800f0, 6300f0), logg=(5.0f0, 6.0f0)))
+                #  phoenix_transition=(Teff=(5500f0, 6500f0),), # logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
+                #  wmbasic_transition=(Teff=(18000f0, 20000f0), logg=(2.5f0, 3.5f0), Mdot=(-Inf32, 1f-8)),
+                #  koester_transition=(Teff=(5800f0, 6300f0), logg=(5.0f0, 6.0f0)))
+                 phoenix_lim=(Teff=(0f0, 6500f0), logg=(-Inf32, 6.0f0), Mdot=(0f0, 2f-8)),
+                 atlas9_lim=(Teff=(5500f0, Inf32), logg=(-Inf32, 5.5f0), Mdot=(0f0, 2f-8)),
+                 wmbasic_lim=(Teff=(18000f0, Inf32), logg=(-Inf32, 5.5f0), Mdot=(1f-8, Inf32)),
+                 koester_lim=(Teff=(5000f0, Inf32), logg=(5.75f0, Inf32), Mdot=(0f0, 2f-8)))
 
     check_prefix(prefix)
+    # Grid order is assumed later; this *cannot* be safely changed on its own
     grids = (phoenix = PHOENIXYBCGrid(grid; prefix=prefix),
              atlas9 = ATLAS9YBCGrid(grid; prefix=prefix),
-             koester = KoesterWD.KoesterWDYBCGrid(grid; prefix=prefix),
-             wmbasic = WMbasic.WMbasicYBCGrid(grid; prefix=prefix))
-    transitions = (phoenix = phoenix_transition, wmbasic = wmbasic_transition, koester = koester_transition)
+             wmbasic = WMbasic.WMbasicYBCGrid(grid; prefix=prefix),
+             koester = KoesterWD.KoesterWDYBCGrid(grid; prefix=prefix))
+    limits = (phoenix = phoenix_lim, atlas9 = atlas9_lim, wmbasic = wmbasic_lim, koester = koester_lim)
     f = first(grids)
-    return YBCGrid(grids, transitions, mass_loss_model, f.mag_zpt, f.systems, f.name, f.filters)
+    return YBCGrid(grids, limits, mass_loss_model, f.mag_zpt, f.systems, f.name, f.filters)
 end
 (grid::YBCGrid)(mh::Real, Av::Real) = YBCTable(grid, mh, Av)
 Base.show(io::IO, z::YBCGrid) = print(io, "YBC bolometric correction grid for photometric system $(z.name).")
@@ -295,13 +308,13 @@ struct YBCTable{A <: Real, B, C, D <: AbstractMassLoss, N} <: AbstractBCTable{A}
     systems::Vector{String}
     name::String
     tables::B
-    transitions::C
+    limits::C
     mass_loss_model::D
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
-function YBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, name, tables, transitions, mass_loss_model::AbstractMassLoss, filters)
+function YBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, name, tables, limits, mass_loss_model::AbstractMassLoss, filters)
     T = dtype # promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
-    return YBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), tables, transitions, mass_loss_model, filters)
+    return YBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), tables, limits, mass_loss_model, filters)
 end
 Base.show(io::IO, z::YBCTable) = print(io, "YBC bolometric correction table for system $(z.name) with [M/H] ",
                                        MH(z), " and V-band extinction ", z.Av)
@@ -315,15 +328,139 @@ function Base.extrema(::Type{<:YBCTable})
     return (Teff = ex.Teff, logg = ex.logg, Mdot = ex.Mdot)
 end
 
+function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
+    check_vals(mh, Av, extrema(grid))
+    filters = filternames(grid)
+
+    # tables = [g(mh, Av) for g in grid.grids]
+    tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids)
+    return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.limits, grid.mass_loss_model, filters)
+end
+
+# Evaluation methods
 (table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
-function (table::YBCTable)(Teff::Real, logg::Real, Mdot::Real)
-    transitions = table.transitions
-    phoenix = transitions.phoenix
-    if Teff <= first(phoenix.Teff)
-        # return phoenix
-    elseif first(phoenix.Teff) <= Teff <= last(phoenix.Teff)
-        # Interpolate between phoenix and atlas
+"""
+    check_vals(nt::NamedTuple, Teff, logg, Mdot)
+Check if `(Teff, logg, Mdot)` all fall within the bounds set in `nt`, which might look like `nt = (Teff=(0f0, 6500f0), logg=(-Inf32, 6.0f0), Mdot=(0f0, 2f-8))`."""
+check_vals(nt::NamedTuple, Teff, logg, Mdot) = (first(nt.Teff) <= Teff <= last(nt.Teff)) && (first(nt.logg) <= logg <= last(nt.logg)) && (first(nt.Mdot) <= Mdot <= last(nt.Mdot))
+"""
+    _get_table(tables, i::Int)
+Improve type stability in `(table::YBCTable)(Teff::Real, logg::Real, Mdot::Real)` by converting indexing calls like `table.tables[1]` into the corresponding NamedTuple keys like `tables.phoenix`. Assumes a particular mapping between index and key: `((i=1, key=:phoenix), (i=2, key=:atlas9), (i=3, key=:wmbasic), (i=4, key=:koester))`. This function is type unstable but not terribly slow."""
+function _get_table(tables, i::Int)
+# function _get_table(tables, limits, i::Int)
+    if i == 1
+        # return tables.phoenix, limits.phoenix # ::PHOENIXYBCTable
+        return tables.phoenix
+        # return :phoenix
+    elseif i == 2
+        # return tables.atlas9, limits.atlas9 # ::ATLAS9YBCTable
+        return tables.atlas9
+        # return :atlas9
+    elseif i == 3
+        # return tables.wmbasic, limits.wmbasic # ::WMbasic.WMbasicYBCTable
+        return tables.wmbasic
+        # return :wmbasic
+    elseif i == 4
+        # return tables.koester, limits.koester # ::KoesterWD.KoesterWDYBCTable
+        return tables.koester
+        # return :koester
+    else
+        error("Invalid index $i; must be between 1 and 4.")
     end
+end
+# function _get_limits(tables, limits, i::Int)
+#     if i == 1
+#         return tables.phoenix, limits.phoenix # ::PHOENIXYBCTable
+#         # return :phoenix
+#     elseif i == 2
+#         return tables.atlas9, limits.atlas9 # ::ATLAS9YBCTable
+#         # return :atlas9
+#     elseif i == 3
+#         return tables.wmbasic, limits.wmbasic # ::WMbasic.WMbasicYBCTable
+#         # return :wmbasic
+#     elseif i == 4
+#         return tables.koester, limits.koester # ::KoesterWD.KoesterWDYBCTable
+#         # return :koester
+#     else
+#         error("Invalid index $i; must be between 1 and 4.")
+#     end
+# end
+"""
+    _itp_tables(table1, table2, lim1, lim2, Teff, logg, Mdot)
+Given two YBC subtables `(table1, table)` that are to be used over the limits `(lim1, lim2)`, interpolate between them at `(Teff, logg, Mdot)` with weighting based on how close the point is to the boundaries defined in `lim`.
+"""
+function _itp_tables(table1, table2, lim1, lim2, Teff, logg, Mdot)
+    # Evaluate table1, table2
+    arg = (Teff = Teff, logg = logg, Mdot = Mdot)
+    r1, r2 = table1(arg), table2(arg)
+
+    # Determine interpolation weights
+    d_t1 = (abs(Teff - lim1.Teff[1]), abs(Teff - lim1.Teff[2])) # ul_t1 = ifelse(abs(Teff - lim1.Teff[1]) < abs(Teff - lim1.Teff[2]), 1, 2)
+    ul_t1 = ifelse(d_t1[1] < d_t1[2], 1, 2)
+    d_t2 = (abs(Teff - lim2.Teff[1]), abs(Teff - lim2.Teff[2]))
+    ul_t2 = ifelse(d_t2[1] < d_t2[2], 1, 2) # ul_t2 = ifelse(abs(Teff - lim2.Teff[1]) < abs(Teff - lim2.Teff[2]), 1, 2)
+    # logTe = log10(Teff)
+    # d_t1 = (abs(logTe - log10(lim1.Teff[1])), abs(logTe - log10(lim1.Teff[2]))) # ul_t1 = ifelse(abs(Teff - lim1.Teff[1]) < abs(Teff - lim1.Teff[2]), 1, 2)
+    # ul_t1 = ifelse(d_t1[1] < d_t1[2], 1, 2)
+    # d_t2 = (abs(logTe - log10(lim2.Teff[1])), abs(logTe - log10(lim2.Teff[2])))
+    # ul_t2 = ifelse(d_t2[1] < d_t2[2], 1, 2) # ul_t2 = ifelse(abs(Teff - lim2.Teff[1]) < abs(Teff - lim2.Teff[2]), 1, 2)
+
+    d_g1 = (abs(logg - lim1.logg[1]), abs(logg - lim1.logg[2]))
+    ul_g1 = ifelse(d_g1[1] < d_g1[2], 1, 2)
+    d_g2 = (abs(logg - lim2.logg[1]), abs(logg - lim2.logg[2]))
+    ul_g2 = ifelse(d_g2[1] < d_g2[2], 1, 2)
+    # We'll determine the relative weights based on the log(Te) and log(g) differentials
+    # Deterine if the limits for the tables are the same in any dimensions
+    Teff_lim, logg_lim = (lim1.Teff[ul_t1], lim2.Teff[ul_t2]), (lim1.logg[ul_g1], lim2.logg[ul_g2])
+    # t_eq, g_eq = (lim1.Teff[ul_t1] == lim2.Teff[ul_t2], lim1.logg[ul_g1] == lim2.logg[ul_g2])
+    t_eq, g_eq = (Teff_lim[1] == Teff_lim[2], logg_lim[1] == logg_lim[2])
+    if t_eq & g_eq
+        # If both bounds equal, just return mean of two results
+        return @. (r1 + r2) / 2
+    elseif t_eq # lim1.Teff[ul_t1] == lim2.Teff[ul_t2]
+        println("t_eq")
+        # If temperature bounds equal, only interpolate in logg
+        return interp1d(logg, lim1.logg[ul_g1], lim2.logg[ul_g2], r1, r2)
+    elseif g_eq # lim1.logg[ul_g1] == lim2.logg[ul_g2]
+        # If logg bounds equal, only interpolate in log(Teff)
+        println("g_eq")
+        if all(<(Teff), Teff_lim) # All Teff_lim < Teff, so we are not "between" two tables -- just return greater table
+            return ifelse(Teff_lim[1] > Teff_lim[2], r1, r2)
+        end
+        # if all(<(logg), logg_lim)
+        return interp1d(log10(Teff), log10(lim1.Teff[ul_t1]), log10(lim2.Teff[ul_t2]), r1, r2)
+        # return interp1d(Teff, lim1.Teff[ul_t1], lim2.Teff[ul_t2], r1, r2)
+    else
+        # If no bounds equal, use 2D interpolation
+        return interp2d(log10(Teff), logg, log10(lim1.Teff[ul_t1]), log10(lim2.Teff[ul_t2]), lim1.logg[ul_g1], lim2.logg[ul_g2], r1, r2, r1, r2)
+    end
+end
+function (table::YBCTable)(Teff::Real, logg::Real, Mdot::Real)
+    limits = table.limits
+    tables = table.tables
+    arg = (Teff=Teff, logg=logg, Mdot=Mdot) # argument NamedTuple to pass into the individual tables
+    flags = sacollect(SVector{length(limits), Bool}, check_vals(lim, Teff, logg, Mdot) for lim in limits)
+    c = count(flags)
+    if c == 1
+        idx = findfirst(flags)
+        println(idx)
+        return _get_table(tables, idx)(arg)
+        # t, _ =  _get_table(tables, limits, idx)
+        # return t(arg)
+    elseif c == 2
+        idxs = findall(flags)
+        println(idxs)
+        i, j = idxs[1], idxs[2]
+        t1 = _get_table(tables, i)
+        t2 = _get_table(tables, j)
+        # Call interpolation between the two libraries
+        return _itp_tables(t1, t2, limits[i], limits[j], Teff, logg, Mdot)
+    elseif c > 2
+        @warn "Provided combination of Teff=$Teff, logg=$logg, Mdot=$Mdot matched more than 2 YBC sub-libraries. Smoothing interpolation between libraries is only supported for up to 2."
+    else # c == 0
+        error("Provided Teff=$Teff, logg=$logg, Mdot=$Mdot did not match a YBC sub-library.")
+    end
+    # return flags
 end
 (table::YBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 # (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
@@ -333,14 +470,6 @@ end
 # (::YBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 # (::YBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 # to broadcast over both teff and logg, you do table.(teff, logg')
-
-function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
-    check_vals(mh, Av, extrema(grid))
-    filters = filternames(grid)
-
-    tables = [g(mh, Av) for g in grid.grids]
-    return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.transitions, grid.mass_loss_model, filters)
-end
 
 
  export YBCGrid, YBCTable
