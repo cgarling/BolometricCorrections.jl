@@ -2,7 +2,7 @@ module YBC
 
 # using ..BolometricCorrections: @compat
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg
 
 using Compat: @compat
 import CSV
@@ -315,7 +315,10 @@ function Base.extrema(::Type{<:YBCTable})
     return (Teff = ex.Teff, logg = ex.logg, Mdot = ex.Mdot)
 end
 
-(table::YBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
+function (table::YBCTable)(arg)
+    newarg = merge(arg, (Z = Z(table),)) # Add Z to arg for _parse_Mdot
+    return table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(newarg, table.mass_loss_model))
+end
 (table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
@@ -369,7 +372,7 @@ function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
         elseif Teff >= last(koester.Teff)
             return tables.koester(Teff, logg)
         else
-            return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
+            return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), tables.phoenix(Teff, logg), tables.koester(Teff, logg))
         end
     elseif logg >= first(koester.logg)
         # Check temperature range for interpolation between PHOENIX and KoesterWD
@@ -387,19 +390,15 @@ function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
     end
 
     # If statement for ~normal~ stars, phoenix + atlas
-    # if (Teff <= first(phoenix.Teff)) && (logg <= first(koester.logg))
     if Teff <= first(phoenix.Teff)
-        return tables.phoenix(Teff, logg) # Return phoenix result
-    # elseif (Teff <= last(phoenix.Teff)) && (logg <= first(koester.logg))
+        return tables.phoenix(Teff, logg)
     elseif Teff <= last(phoenix.Teff)
-        # Return interpolation between phoenix and atlas
         return interp1d(log10(Teff), log10(first(phoenix.Teff)), log10(last(phoenix.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
     else
-        return tables.atlas9(Teff, logg) # Return atlas result
+        return tables.atlas9(Teff, logg)
     end
 
 end
-# (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Methods to fix method ambiguities
 (::YBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 (::YBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
@@ -408,7 +407,6 @@ end
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
     check_vals(mh, Av, extrema(grid))
     filters = filternames(grid)
-
     tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids) # tables = [g(mh, Av) for g in grid.grids]
     return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.transitions, grid.mass_loss_model, filters)
 end
