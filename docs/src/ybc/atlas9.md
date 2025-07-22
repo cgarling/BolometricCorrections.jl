@@ -8,7 +8,7 @@ This submodule (`BolometricCorrections.YBC.ATLAS9`) enables interaction with the
 | logg   | 0.0  | 5.0   |
 | \[Fe/H\] | -2.5 dex   | 0.5 dex  |
 | Av     | 0.0 mag    | 20.0 mag   |
-| Rv     | 3.1    | 3.1   | 
+| Rv     | 3.1    | 3.1   |
 
 The full grid of unique values for the dependent variables is available in `BolometricCorrections.YBC.ATLAS9.gridinfo`.
 
