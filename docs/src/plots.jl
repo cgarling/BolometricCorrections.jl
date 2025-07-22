@@ -41,7 +41,7 @@ function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff:
     f = Figure()
     ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
     ax.xreversed = true
-    p = heatmap!(ax, log10.(Teff), logg, plot_data; interpolate=false, colormap=:viridis) # , colormap=:cividis)
+    p = heatmap!(ax, log10.(Teff), logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
     Colorbar(f[:, end+1], p)
     return f, ax
 end

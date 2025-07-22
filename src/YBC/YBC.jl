@@ -2,7 +2,7 @@ module YBC
 
 # using ..BolometricCorrections: @compat
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames
 
 using Compat: @compat
 import CSV
@@ -161,12 +161,9 @@ using .WMbasic
 
 """
     YBCGrid(grid::AbstractString;
-            mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss(),
-            phoenix_transition=(Teff=(5500f0, 6500f0), logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
-            wmbasic_transition=(Teff=(18000f0, 20000f0), logg=(2.5f0, 3.5f0), Mdot=(-Inf32, 1f-8)),
-            koester_transition=(Teff=(5800f0, 6300f0), logg=(5.0f0, 6.0f0)))
+            mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss())
 
-Load and return the [YBC](@citet Chen2019) bolometric corrections for the given photometric system `grid`,
+Load and return the YBC [Chen2019](@citep) bolometric corrections for the given photometric system `grid`,
 which must be a valid entry in `BolometricCorrections.YBC.systems`.
 This model interpolates between bolometric correction grids derived from
 several different atmoshere libraries -- the individual grids that make up
@@ -182,7 +179,7 @@ grid variables (\\[M/H\\], Av). This can be done either by calling an instance o
 julia> using BolometricCorrections.YBC: YBCGrid
 
 julia> grid = YBCGrid("acs_wfc")
-YBC WM-basic bolometric correction grid for photometric system YBC/acs_wfc.
+YBC bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
 YBC bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
@@ -254,19 +251,19 @@ YBC bolometric correction grid for photometric system YBC/acs_wfc.
 julia> table = YBCTable(grid, -1.01, 0.011) # Interpolate table from full grid
 YBC bolometric correction table for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.011
 
-julia> length(table(25_0254.0, 2.54, 5e-6)) == 12 # Returns BC in each filter
+julia> length(table(25_0254.0, 2.54, 0.0)) == 12 # Returns BC in each filter
 true
 
-julia> size(table([25_0254.0, 25_0354.0], [2.54, 2.56], [4e-6, 5e-6])) # `table(array, array)` is also supported
+julia> size(table([25_0254.0, 25_0354.0], [2.54, 2.56], [0.0, 5e-6])) # `table(array, array)` is also supported
 (12, 2)
 
 julia> using TypedTables: Table # `table(Table, array, array)` will return result as a Table
 
-julia> table(Table, [25_0254.0, 25_0354.0], [2.54, 2.56], [4e-6, 5e-6]) isa Table
+julia> table(Table, [25_0254.0, 25_0354.0], [2.54, 2.56], [0.0, 5e-6]) isa Table
 true
 ```
 
-The YBC [WM-basic](@ref YBCWMbasic) BCs require the mass outflow rate `Mdot` -- when called with two arguments, 
+The YBC [WM-basic](@ref YBCWMbasic) BCs require the mass outflow rate `Mdot`. When called with two arguments, 
 it is assumed the arguments are `Teff, logg` and that `Mdot=0` such that the WM-basic models
 are not used. 
 
@@ -275,7 +272,7 @@ julia> table(25_0254.0, 2.54) == table(25_0254.0, 2.54, 0.0)
 true
 ```
 
-If called with via the one-argument method, taking types like `NamedTuple`,
+If called via the one-argument method, taking types like `NamedTuple`,
 required parameters will be parsed from the provided argument. If quantities sufficient
 to estimate a mass-loss rate are identified, then the mass-loss rate will be automatically
 estimated and the WM-basic models will be used when appropriate. An example of this usage 

@@ -173,5 +173,19 @@ for mh in range(-2, 0; step=0.1)
         Teff, logg, Mdot = phoenix_transitions.Teff[1] + 100, 2.0, 0.0
         r1, r2, r3  = table(Teff, logg, Mdot), table.tables.phoenix(Teff, logg), table.tables.atlas9(Teff, logg)
         @test mapreduce(is_between, &, r1, r2, r3)
+
+
+        #########################
+        #########################
+        # Loop over Teff, logg, Mdot and verify that calling table returns correct type
+        for logTeff in range(log10(3500), 5; length=50)
+            Teff = exp10(logTeff)
+            for logMdot in (-11.0, -6.0, -4.0)
+                Mdot = exp10(logMdot)
+                for logg in range(-2.0, 9.0; length=50)
+                    @test table(Teff, logg, Mdot) isa AbstractVector
+                end
+            end
+        end
     end
 end

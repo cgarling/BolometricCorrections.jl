@@ -42,14 +42,39 @@ end
 print_in_columns(YBC.systems, 6) # hide
 ```
 
+```@example ybc
+using BolometricCorrections # hide
+using BolometricCorrections.YBC # hide
+include(joinpath(@__DIR__, "..", "plots.jl")) # hide
+grid = YBCGrid("jwst_nircam_wide") # hide
+# Teff = range(extrema(grid).Teff[1], 10_000; length=1000) # hide
+Teff = logrange(exp10(3.5), 10_000; length=1000) # hide
+logg = range(extrema(grid).logg...; length=1000) # hide
+f, ax = plot_bc_table(grid(-1, 0), "F090W", Teff, logg) # hide
+ax.title = "YBC BCs for JWST/NIRCam F090W" # hide
+text!(ax, 0.95, 0.95, text="[M/H] = -1\n Av = 0", align=(:right, :top), space=:relative) # hide
+# vlines!(ax, log10.([grid.transitions.koester.Teff[2],]), color = "black")
+# hlines!(ax, [grid.transitions.koester.logg[1],], color = "black")
+f # hide
+```
+
+## Types
+
+```@docs
+YBCGrid
+YBCTable
+```
+
 ## [Chemistry API](@id ybc_chemistry)
-We provide the [`BolometricCorrections.YBC.PARSECChemistry`](@ref) type to access information on the solar chemical abundances assumed for the PARSEC models (see also [Bressan2012](@citet)). These solar abundances are also used by the YBC bolometric correction library.
+We provide the [`BolometricCorrections.YBC.PARSECChemistry`](@ref) type to access information on the solar chemical abundances assumed for the PARSEC stellar models (see also [Bressan2012](@citet)) and YBC bolometric correction library.
 
 ```@docs
 BolometricCorrections.YBC.PARSECChemistry
 ```
 
 Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *photospheric* solar values for `Z⊙` and `X⊙` (these are `Z_⊙` and `X_⊙ = 1 - Z_⊙ - Y_⊙` in Table 3 of [Bressan2012](@citet)). This reproduces the relation between `Z` and \[M/H\] defined in Table 4 of [Bressan2012](@citet), which is also used in the "CMD" webform provided by the PARSEC team.
+
+The individual submodules that constitute the YBC library have different assumptions about the solar chemical mixture. When you interpolate a [`YBCGrid`](@ref) to a particular metallicity \[M/H\], this is converted to the corresponding metal mass fraction [`Z`](@ref) for [`PARSECChemistry`](@ref BolometricCorrections.YBC.PARSECChemistry). Each of the submodules are then interpolated to this common metal mass fraction -- in this way, all the submodules are normalized to the same metal mass fraction, though their solar chemical mixtures are not identical. This is the same approach taken by [Chen2019](@citet).
 
 ## YBC References
 This page cites the following references:
