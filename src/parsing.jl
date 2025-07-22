@@ -3,6 +3,8 @@
 # to pass along to the AbstractBCTable.
 # Since keys are encoded in the types of NamedTuples,
 # checking for the existence of the keys has no runtime cost.
+# These methods should expect that the keys of the input
+# e.g., iso.logL, may be vectors/arrays and broadcast appropriately.
 
 @inline function _parse_teff(iso)
     iso_keys = keys(iso)
@@ -33,12 +35,11 @@ end
 end
 
 @inline function _parse_Mbol(iso)
-    iso_keys = keys(iso)
-    if :Mbol in iso_keys
+    if :Mbol in keys(iso)
         return iso.Mbol
     else
         try # Try to use conversion from logL if available
-            return Mbol(_parse_logL(iso))
+            return Mbol.(_parse_logL(iso))
         catch
             throw(ArgumentError("Provided `iso` argument does not contain a recognized bolometric magnitude key, `(:Mbol,)`."))
         end
@@ -54,7 +55,7 @@ end
     # Calling up to _parse_Mbol would create a stack overflow if neither succeeds,
     # so we need to do an independent check here to prevent recursive loop.
     elseif :Mbol in iso_keys
-        return logL(iso.Mbol)
+        return logL.(iso.Mbol)
     else
         throw(ArgumentError("Provided `iso` argument does not contain a recognized log(L) key, `(:logL, :log_L)`."))
     end
@@ -77,7 +78,7 @@ end
             if :Z in iso_keys
                 Z = iso.Z
                 logL = _parse_logL(iso)
-                return model(Z, logL)
+                return model.(Z, logL)
             else
                 throw(ArgumentError("Model `Bjorklund2021MassLoss` requires metal mass fraction `:Z` as key in input."))
             end
@@ -87,13 +88,12 @@ end
     end
 end
 @inline function _parse_Mdot(iso, Z, model::Bjorklund2021MassLoss)
-    iso_keys = keys(iso)
-    if :Mdot in iso_keys
+    if :Mdot in keys(iso)
         return iso.Mdot
     else
         try # Try to calculate from other quantities
             logL = _parse_logL(iso)
-            return model(Z, logL)
+            return model.(Z, logL)
         catch
             throw(ArgumentError("Provided `iso` argument does not contain a recognized Mdot key, `(:Mdot,)` and cannot be calculated from the keys of $iso for the mass-loss model $model."))
         end
