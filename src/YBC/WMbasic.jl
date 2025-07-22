@@ -253,7 +253,8 @@ Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
 Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                            logg = (first(gridinfo.logg), last(gridinfo.logg)),
                                            Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
-(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
+(table::WMbasicYBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real} = table.itp(logg, log10(Teff), log10(Mdot))
+(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
 (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output

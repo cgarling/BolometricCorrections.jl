@@ -209,7 +209,8 @@ Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
 # We will just use the hard-coded grid bounds; extremely fast
 Base.extrema(::Type{<:PHOENIXYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                            logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table(promote(Teff, logg)...)
+(table::PHOENIXYBCTable)(Teff::T, logg::T) where {T <: Real} = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::PHOENIXYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')
