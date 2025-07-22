@@ -1,7 +1,7 @@
 module YBC
 
 # using ..BolometricCorrections: @compat
-using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without
+using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
 import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry
 
 using Compat: @compat
@@ -206,8 +206,8 @@ function YBCGrid(grid::AbstractString;
                  mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss(),
                  prefix::AbstractString="YBC",
                  phoenix_transition=(Teff=(5500f0, 6500f0),), # logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
-                 wmbasic_transition=(Teff=(18000f0, 20000f0), logg=(2.5f0, 3.5f0), Mdot=(-Inf32, 1f-8)),
-                 koester_transition=(Teff=(5800f0, 6300f0), logg=(5.0f0, 6.0f0)))
+                 wmbasic_transition=(Teff=(20_000f0, 22_000f0), Mdot=(1f-9, 1f-7)), # , logg=(2.5f0, 3.5f0)
+                 koester_transition=(Teff=(5100f0, 6300f0), logg=(5.0f0, 6.0f0)))
 
     check_prefix(prefix)
     grids = (phoenix = PHOENIXYBCGrid(grid; prefix=prefix),
@@ -315,30 +315,101 @@ function Base.extrema(::Type{<:YBCTable})
     return (Teff = ex.Teff, logg = ex.logg, Mdot = ex.Mdot)
 end
 
-(table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
-function (table::YBCTable)(Teff::Real, logg::Real, Mdot::Real)
-    transitions = table.transitions
-    phoenix = transitions.phoenix
-    if Teff <= first(phoenix.Teff)
-        # return phoenix
-    elseif first(phoenix.Teff) <= Teff <= last(phoenix.Teff)
-        # Interpolate between phoenix and atlas
-    end
-end
 (table::YBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
-# (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
-# # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
+(table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
+# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
-# # Methods to fix method ambiguities
-# (::YBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
-# (::YBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+(table::YBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
+function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
+    # println(typeof.((Teff, logg, Mdot)))
+    tables = table.tables
+    transitions = table.transitions
+    phoenix = transitions.phoenix # Transition region between phoenix and atlas9
+    wmbasic = transitions.wmbasic # Transition region between atlas9 and wmbasic
+    koester = transitions.koester # Transition region between atlas9 and KoesterWD
+
+    # If statement for high Mdot -> WMbasic library
+    if Mdot >= last(wmbasic.Mdot)
+        # if Teff >= first(wmbasic.Teff)
+        #     return tables.wmbasic(Teff, logg, Mdot)
+        # else # Temperature too low, use atlas9
+        #     return tables.atlas9(Teff, logg)
+        # end
+        if Teff <= first(wmbasic.Teff)
+            return tables.atlas9(Teff, logg)
+        elseif Teff >= last(wmbasic.Teff)
+            return tables.wmbasic(Teff, logg, Mdot)
+        else
+            # Interpolate in log(Teff) only
+            r1, r2 = tables.atlas9(Teff, logg), tables.wmbasic(Teff, logg, Mdot)
+            return interp1d(log10(Teff), log10(first(wmbasic.Teff)), log10(last(wmbasic.Teff)), r1, r2)
+        end
+    elseif Mdot >= first(wmbasic.Mdot)
+        if Teff <= first(wmbasic.Teff) # Temperature too low, use atlas9
+            return tables.atlas9(Teff, logg)
+        elseif Teff >= last(wmbasic.Teff)
+            # Interpolate only in Mdot
+            r1, r2 = tables.atlas9(Teff, logg), tables.wmbasic(Teff, logg, Mdot)
+            return interp1d(log10(Mdot), log10(first(wmbasic.Mdot)), log10(last(wmbasic.Mdot)), r1, r2)
+        else
+            # For interpolating between two dimensions, just do 1-D interpolation twice, then average results
+            # since we aren't doing "real" 2-D interpolation with 4 points -- just have 2 points and want to weight
+            # the result based on how close to the edges (4 points) the single (Teff, logg) point is
+            r1, r2 = tables.atlas9(Teff, logg), tables.wmbasic(Teff, logg, Mdot)
+            i1 = interp1d(log10(Teff), log10(first(wmbasic.Teff)), log10(last(wmbasic.Teff)), r1, r2)
+            i2 = interp1d(log10(Mdot), log10(first(wmbasic.Mdot)), log10(last(wmbasic.Mdot)), r1, r2)
+            return @. (i1 + i2) / 2
+        end
+    end
+
+    # If statement for high logg -> KoesterWD library + phoenix transition
+    if logg >= last(koester.logg)
+        if Teff <= first(koester.Teff)
+            return tables.phoenix(Teff, logg)
+        elseif Teff >= last(koester.Teff)
+            return tables.koester(Teff, logg)
+        else
+            return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
+        end
+    elseif logg >= first(koester.logg)
+        # Check temperature range for interpolation between PHOENIX and KoesterWD
+        if Teff <= first(koester.Teff)
+            return tables.phoenix(Teff, logg)
+        elseif Teff >= last(koester.Teff)
+            return tables.koester(Teff, logg)
+        else
+            r1, r2 = tables.phoenix(Teff, logg), tables.koester(Teff, logg)
+            i1 = interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), r1, r2)
+            i2 = interp1d(logg, first(koester.logg), last(koester.logg), r1, r2)
+            # return interp2d(log10(Teff), logg, log10(koester.Teff[1]), log10(koester.Teff[2]), koester.logg[1], koester.logg[2], r1, r2, r1, r2)
+            return @. (i1 + i2) / 2
+        end
+    end
+
+    # If statement for ~normal~ stars, phoenix + atlas
+    # if (Teff <= first(phoenix.Teff)) && (logg <= first(koester.logg))
+    if Teff <= first(phoenix.Teff)
+        return tables.phoenix(Teff, logg) # Return phoenix result
+    # elseif (Teff <= last(phoenix.Teff)) && (logg <= first(koester.logg))
+    elseif Teff <= last(phoenix.Teff)
+        # Return interpolation between phoenix and atlas
+        return interp1d(log10(Teff), log10(first(phoenix.Teff)), log10(last(phoenix.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
+    else
+        return tables.atlas9(Teff, logg) # Return atlas result
+    end
+
+end
+# (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
+# Methods to fix method ambiguities
+(::YBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+(::YBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
     check_vals(mh, Av, extrema(grid))
     filters = filternames(grid)
 
-    tables = [g(mh, Av) for g in grid.grids]
+    tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids) # tables = [g(mh, Av) for g in grid.grids]
     return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.transitions, grid.mass_loss_model, filters)
 end
 
