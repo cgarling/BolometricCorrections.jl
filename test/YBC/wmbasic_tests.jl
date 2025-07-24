@@ -3,9 +3,7 @@ using BolometricCorrections
 using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable, gridinfo
 
 grid = WMbasicYBCGrid("acs_wfc")
-# Because this grid is defined in Z, slight roundoff errors occur on the conversion to MH so that
-# the ∈ operator does not catch the ends of MH. Should probably use ≈ rather than ∈
-for mh in range(extrema(grid).MH[1] + 0.01, extrema(grid).MH[2] - 0.01; length=10)
+for mh in range(extrema(grid).MH[1], extrema(grid).MH[2]; length=10)
     for Av in range(extrema(grid).Av...; length=10)
         table = grid(mh, Av)
         @test table isa WMbasicYBCTable

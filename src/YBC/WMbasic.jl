@@ -274,7 +274,7 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
 
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
-        submatrix = data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)]
+        submatrix = stack(data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)])
     else
         if mh ∈ gridinfo.MH
             MH_idx = searchsortedfirst(MH_vec, mh)
