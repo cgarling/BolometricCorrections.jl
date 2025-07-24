@@ -2,7 +2,7 @@
 
 This submodule enables interaction with the "YBC" bolometric correction (BC) grid described in [Chen2019](@citet). These BCs are commonly used in conjunction with the PARSEC stellar models and are used in the "CMD webform" maintained by Leo Girardi. The YBC grid presents a uniform processing of a number of different stellar atmosphere libraries (see section 3.1 of [Chen2019](@citealt)) that each cover different parameter spaces (e.g., surface gravity and effective temperature) as well as different types of stars (e.g., Wolf-Rayet stars, white dwarfs). This approach allows YBC to be robust across a broad range of stellar evolutionary states and makes it very useful for generating synthetic stellar photometry. However, many of these libraries are only used when particular stellar conditions are met, and not all libraries cover the same range of stellar population parameters (metallicity in particular).
 
-Our implementation currently only supports a subset of the libraries in the full YBC set. In particular, we support the [PHOENIX](@ref YBCPHOENIX) models (used for cool stars), the [ATLAS9](@ref YBCATLAS9) models (used for hot stars), the [Koester & Tremblay white dwarf models](@ref YBCKoester), and the [WM-basic O and B star models](@ref YBCWMbasic).
+Our implementation currently only supports a subset of the libraries in the full YBC set. In particular, we support the [PHOENIX](@ref YBCPHOENIX) models (used for cool stars), the [ATLAS9](@ref YBCATLAS9) models (used for hot stars), the [Koester & Tremblay white dwarf models](@ref YBCKoester), and the [WM-basic O and B star models](@ref YBCWMbasic). Interpolation between these libraries as a function of stellar properties is supported by the [`YBCGrid`](@ref) and [`YBCTable`](@ref) types.
 
 ## Obtaining Data
 
@@ -42,6 +42,8 @@ end
 print_in_columns(YBC.systems, 6) # hide
 ```
 
+We illustrate which model library is used as a function of surface gravity `logg` and effective temperature `Teff` for stars without outflows (`Mdot = 0`) below.
+
 ```@example ybc
 using BolometricCorrections # hide
 using BolometricCorrections.YBC # hide
@@ -52,9 +54,48 @@ Teff = logrange(exp10(3.5), 10_000; length=1000) # hide
 logg = range(extrema(grid).logg...; length=1000) # hide
 f, ax = plot_bc_table(grid(-1, 0), "F090W", Teff, logg) # hide
 ax.title = "YBC BCs for JWST/NIRCam F090W" # hide
-text!(ax, 0.95, 0.95, text="[M/H] = -1\n Av = 0", align=(:right, :top), space=:relative) # hide
-# vlines!(ax, log10.([grid.transitions.koester.Teff[2],]), color = "black")
-# hlines!(ax, [grid.transitions.koester.logg[1],], color = "black")
+text!(ax, 0.95, 0.95, text=L"[M/H] = -1\n Av = 0\n$\dot{M}=0$", align=(:right, :top), space=:relative) # hide
+vlines!(ax, log10.([grid.transitions.koester.Teff[2],]), color = "black") # hide
+hlines!(ax, [grid.transitions.koester.logg[1],], color = "black"; # hide
+        xmin=(log10(grid.transitions.koester.Teff[2]) - log10(minimum(Teff)))/diff(log10.([minimum(Teff), maximum(Teff)]))[1]) # hide
+# lines!(ax, repeat([log10(grid.transitions.koester.Teff[2])], 2), # hide
+#        [grid.transitions.koester.logg[2], maximum(logg)], color=:black, linestyle=:dash) # hide
+# lines!(ax, log10.([grid.transitions.koester.Teff[2], maximum(Teff)]), # hide
+#        repeat([grid.transitions.koester.logg[2]], 2), color=:black, linestyle=:dash) # hide
+text!(ax, 0.05, 0.95, text="Koester\nWhite dwarfs", align=(:left, :top), space=:relative) # hide
+text!(ax, 0.05, 0.35, text="ATLAS9\nHot stars", align=(:left, :top), space=:relative) # hide
+text!(ax, 0.95, 0.35, text="PHOENIX\nCool stars", align=(:right, :top), space=:relative) # hide
+f # hide
+```
+
+We illustrate the transition between the ATLAS9 models used for hot stars and the WM-basic models used for O- and B-type stars with radiation-driven outflows at fixed surface gravity below.
+
+```@example ybc
+Teff = logrange(18_000, 24_000; length=1000) # hide
+logTeff = log10.(Teff) # hide
+logg = 2.5 # hide
+Mdot = logrange(1e-10, 1e-4; length=1000) # hide
+logMdot = log10.(Mdot) # hide
+
+table = grid(-1, 0) # hide
+data = table.(Teff, logg, Mdot') # hide
+
+filter_index = findfirst(==("F090W"), String(i) for i in filternames(table)) # hide
+plot_data = [d[filter_index] for d in data] # hide
+
+f = Figure() # hide
+ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"\text{log} \left( \dot{M} \right)") # hide
+ax.xreversed = true # hide
+p = heatmap!(ax, logTeff, logMdot, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis) # hide
+Colorbar(f[:, end+1], p) # hide
+text!(ax, 0.95, 0.95, text=L"[M/H] = -1\n Av = 0\n$\text{log} \, g=%$logg$", align=(:right, :top), space=:relative) # hide
+vlines!(ax, log10.([grid.transitions.wmbasic.Teff[1],]), color = "black", # hide
+        ymin=(log10(grid.transitions.wmbasic.Mdot[2]) - log10(minimum(Mdot)))/diff(log10.([minimum(Mdot), maximum(Mdot)]))[1]) # hide
+hlines!(ax, [log10(grid.transitions.wmbasic.Mdot[2]),], color = "black"; # hide
+        xmin=(log10(grid.transitions.wmbasic.Teff[1]) - log10(minimum(Teff)))/diff(log10.([minimum(Teff), maximum(Teff)]))[1]) # hide
+text!(ax, 0.05, 0.95, text="WM-basic", align=(:left, :top), space=:relative) # hide
+text!(ax, 0.05, 0.35, text="ATLAS9", align=(:left, :top), space=:relative) # hide
+
 f # hide
 ```
 
