@@ -35,14 +35,23 @@ function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff:
     end
     # Transposing logg will evaluate BC for every combination of Teff and logg
     data = table.(Teff, logg')
+    logTeff = log10.(Teff)
     filter_index = findfirst(==(filtername), String(i) for i in filternames(table))
     plot_data = [d[filter_index] for d in data]
 
     f = Figure()
     ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
     ax.xreversed = true
-    p = heatmap!(ax, log10.(Teff), logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
+    p = heatmap!(ax, logTeff, logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
     Colorbar(f[:, end+1], p)
+
+    # # Create top axis to display T [K] x ticks
+    # # This messes up the heatmap, don't know why ...
+    # # xticks = ax.xaxis.tickvalues[]
+    # ax_top = Axis(f[1, 1]; xaxisposition = :top, xlabel = "Teff [K]", xticklabelsvisible = true, xticksvisible = true, yticksvisible=false, yticklabelsvisible=false,
+    #               xtickformat = x -> @. string(round(exp10(x), digits=1))) # , xticks = xticks)
+    # linkxaxes!(ax, ax_top)
+    # # xlims!(ax, reverse(extrema(logTeff)))
     return f, ax
 end
 
