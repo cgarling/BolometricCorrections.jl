@@ -175,6 +175,10 @@ This type is used to create instances of [`YBCTable`](@ref) that have fixed depe
 grid variables (\\[M/H\\], Av). This can be done either by calling an instance of
 `YBCGrid` with `(mh, Av)` arguments or by using the appropriate constructor for [`YBCTable`](@ref).
 
+The `mass_loss_model::AbstractMassLoss` is used to calculate mass-loss rates on the fly
+for use with the [WM-basic O and B star grid](@ref YBCWMbasic). See the docs for [`YBCTable`](@ref)
+for an example of how the mass-loss model is used.
+
 ```jldoctest
 julia> using BolometricCorrections.YBC: YBCGrid
 
@@ -320,6 +324,21 @@ end
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 (table::YBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
+# This method calculates the interpolation between PHOENIX and ALTAS9 for use in final method
+_phoenix_atlas_interp(table::YBCTable, Teff::Real, logg::Real) = _phoenix_atlas_interp(table, promote(Teff, logg)...)
+_phoenix_atlas_interp(table::YBCTable, Teff::HardwareNumeric, logg::HardwareNumeric) = _phoenix_atlas_interp(table, convert(dtype, Teff), convert(dtype, logg))
+function _phoenix_atlas_interp(table::YBCTable, Teff::T, logg::T) where {T <: Real}
+    tables = table.tables
+    transitions = table.transitions
+    phoenix = transitions.phoenix # Transition region between phoenix and atlas9
+    if Teff <= first(phoenix.Teff)
+        pa_result = tables.phoenix(Teff, logg)
+    elseif Teff <= last(phoenix.Teff)
+        pa_result = interp1d(log10(Teff), log10(first(phoenix.Teff)), log10(last(phoenix.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
+    else
+        pa_result = tables.atlas9(Teff, logg)
+    end
+end
 function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
     # println(typeof.((Teff, logg, Mdot)))
     tables = table.tables
@@ -358,42 +377,51 @@ function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
             r1, r2 = tables.atlas9(Teff, logg), tables.wmbasic(Teff, logg, Mdot)
             i1 = interp1d(log10(Teff), log10(first(wmbasic.Teff)), log10(last(wmbasic.Teff)), r1, r2)
             i2 = interp1d(log10(Mdot), log10(first(wmbasic.Mdot)), log10(last(wmbasic.Mdot)), r1, r2)
-            return @. (i1 + i2) / 2
+            # return @. (i1 + i2) / 2
+            return interp2d(log10(Teff), log10(Mdot), log10(wmbasic.Teff[1]), log10(wmbasic.Teff[2]), log10(wmbasic.Mdot[1]), log10(wmbasic.Mdot[2]), r1, i2, i1, r2)
         end
     end
+
+    # The temperature transition region for the Koester white dwarf library
+    # overlaps with the temperature transition region between atlas + phoenix.
+    # We therefore determine the atlas + phoenix result first, regardless of
+    # the logg, then if the logg is within the Koester WD regime, we use the
+    # phoenix + atlas result to interpolate in the overlapping region.
+    pa_result = _phoenix_atlas_interp(table, Teff, logg)
 
     # If statement for high logg -> KoesterWD library + phoenix transition
     if logg >= last(koester.logg)
         if Teff <= first(koester.Teff)
-            return tables.phoenix(Teff, logg)
+            # return tables.phoenix(Teff, logg)
+            return pa_result
         elseif Teff >= last(koester.Teff)
             return tables.koester(Teff, logg)
         else
-            return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), tables.phoenix(Teff, logg), tables.koester(Teff, logg))
+            # return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), tables.phoenix(Teff, logg), tables.koester(Teff, logg))
+            return interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), pa_result, tables.koester(Teff, logg))
         end
     elseif logg >= first(koester.logg)
         # Check temperature range for interpolation between PHOENIX and KoesterWD
         if Teff <= first(koester.Teff)
-            return tables.phoenix(Teff, logg)
+            # return tables.phoenix(Teff, logg)
+            return pa_result
         elseif Teff >= last(koester.Teff)
-            return tables.koester(Teff, logg)
+            # return tables.koester(Teff, logg)
+            return interp1d(logg, first(koester.logg), last(koester.logg), pa_result, tables.koester(Teff, logg))
         else
-            r1, r2 = tables.phoenix(Teff, logg), tables.koester(Teff, logg)
+            # r1, r2 = tables.phoenix(Teff, logg), tables.koester(Teff, logg)
+            r1, r2 = pa_result, tables.koester(Teff, logg)
             i1 = interp1d(log10(Teff), log10(first(koester.Teff)), log10(last(koester.Teff)), r1, r2)
             i2 = interp1d(logg, first(koester.logg), last(koester.logg), r1, r2)
+            # return @. (i1 + i2) / 2
+            # Assume 4 points are (log10(koester.Teff[1]), koester.logg[1], r1), (log10(koester.Teff[2]), koester.logg[1], i2), (log10(koester.Teff[1]), koester.logg[2], i1), (log10(koester.Teff[2]), koester.logg[2], r2)
+            return interp2d(log10(Teff), logg, log10(koester.Teff[1]), log10(koester.Teff[2]), koester.logg[1], koester.logg[2], r1, i2, i1, r2)
             # return interp2d(log10(Teff), logg, log10(koester.Teff[1]), log10(koester.Teff[2]), koester.logg[1], koester.logg[2], r1, r2, r1, r2)
-            return @. (i1 + i2) / 2
         end
     end
 
-    # If statement for ~normal~ stars, phoenix + atlas
-    if Teff <= first(phoenix.Teff)
-        return tables.phoenix(Teff, logg)
-    elseif Teff <= last(phoenix.Teff)
-        return interp1d(log10(Teff), log10(first(phoenix.Teff)), log10(last(phoenix.Teff)), tables.phoenix(Teff, logg), tables.atlas9(Teff, logg))
-    else
-        return tables.atlas9(Teff, logg)
-    end
+    # If logg not in Koester white dwarf regime, return phoenix + atlas result
+    return pa_result
 
 end
 # Methods to fix method ambiguities

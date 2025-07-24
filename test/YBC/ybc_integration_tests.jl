@@ -1,6 +1,7 @@
 using Test: @test
 using BolometricCorrections
 using BolometricCorrections.YBC
+using BolometricCorrections.YBC: _phoenix_atlas_interp
 
 """
     is_between(a, b, c) = (min(b, c) ≤ a ≤ max(b, c)) || (a ≈ b ≈ c)
@@ -42,10 +43,9 @@ for mh in range(-2, 0; step=0.1)
 
         #########################
         # Tests within interp region
-        # For lower_bound < Teff < upper_bound, Mdot on lower bound, should interpolate between atlas9, wmbasic
+        # For lower_bound < Teff < upper_bound, Mdot on lower bound, should return atlas9 result
         Teff, logg, Mdot = wmbasic_transitions.Teff[1] + 100, 4.15, wmbasic_transitions.Mdot[1]
-        r1, r2, r3  = table(Teff, logg, Mdot), table.tables.atlas9(Teff, logg), table.tables.wmbasic(Teff, logg, Mdot)
-        @test mapreduce(is_between, &, r1, r2, r3) # Test element-wise that each entry of table(Teff, logg, Mdot) is between the atlas9 and wmbasic result
+        @test table(Teff, logg, Mdot) ≈ table.tables.atlas9(Teff, logg)
         # For lower_bound < Teff < upper_bound, Mdot on upper bound, should interpolate between atlas9, wmbasic
         Teff, logg, Mdot = wmbasic_transitions.Teff[1] + 100, 4.15, wmbasic_transitions.Mdot[2]
         r1, r2, r3  = table(Teff, logg, Mdot), table.tables.atlas9(Teff, logg), table.tables.wmbasic(Teff, logg, Mdot)
@@ -103,17 +103,16 @@ for mh in range(-2, 0; step=0.1)
         Teff, logg, Mdot = koester_transitions.Teff[1], koester_transitions.logg[2], 0.0
         r1, r2, r3  = table(Teff, logg, Mdot), table.tables.phoenix(Teff, logg), table.tables.koester(Teff, logg)
         @test mapreduce(is_between, &, r1, r2, r3)
-        # For Teff on upper bound, logg on lower bound, should interpolate between phoenix, koester
+        # For Teff on upper bound, logg on lower bound, should interpolate between phoenix + atlas, koester
         Teff, logg, Mdot = koester_transitions.Teff[2], koester_transitions.logg[1], 0.0
-        r1, r2, r3  = table(Teff, logg, Mdot), table.tables.phoenix(Teff, logg), table.tables.koester(Teff, logg)
+        r1, r2, r3  = table(Teff, logg, Mdot), _phoenix_atlas_interp(table, Teff, logg), table.tables.koester(Teff, logg)
         @test mapreduce(is_between, &, r1, r2, r3)
 
         #########################
         # Tests within interp region
-        # For lower_bound < Teff < upper_bound, logg on lower bound, should interpolate between phoenix, koester
+        # For lower_bound < Teff < upper_bound, logg on lower bound, should return phoenix + atlas9 result
         Teff, logg, Mdot = koester_transitions.Teff[1] + 100, koester_transitions.logg[1], 0.0
-        r1, r2, r3  = table(Teff, logg, Mdot), table.tables.phoenix(Teff, logg), table.tables.koester(Teff, logg)
-        @test mapreduce(is_between, &, r1, r2, r3)
+        @test table(Teff, logg, Mdot) ≈ _phoenix_atlas_interp(table, Teff, logg)
         # For lower_bound < Teff < upper_bound, logg on upper bound, should interpolate between phoenix, koester
         Teff, logg, Mdot = koester_transitions.Teff[1] + 100, koester_transitions.logg[2], 0.0
         r1, r2, r3  = table(Teff, logg, Mdot), table.tables.phoenix(Teff, logg), table.tables.koester(Teff, logg)
