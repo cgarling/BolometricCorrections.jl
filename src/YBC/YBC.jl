@@ -432,7 +432,8 @@ end
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
     check_vals(mh, Av, extrema(grid))
     filters = filternames(grid)
-    tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids) # tables = [g(mh, Av) for g in grid.grids]
+    tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids)
+    # tables = [g(mh, Av) for g in grid.grids]
     return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.transitions, grid.mass_loss_model, filters)
 end
 
