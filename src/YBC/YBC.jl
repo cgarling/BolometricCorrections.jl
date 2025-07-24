@@ -4,6 +4,7 @@ module YBC
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
 import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames
 
+using ArgCheck: @argcheck
 using Compat: @compat
 import CSV
 using TypedTables: Table
@@ -161,12 +162,13 @@ using .WMbasic
 
 """
     YBCGrid(grid::AbstractString;
+            extrapolate::Bool = true,
             mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss())
 
 Load and return the YBC [Chen2019](@citep) bolometric corrections for the given photometric system `grid`,
 which must be a valid entry in `BolometricCorrections.YBC.systems`.
 This model interpolates between bolometric correction grids derived from
-several different atmoshere libraries -- the individual grids that make up
+several different atmosphere libraries -- the individual grids that make up
 the integrated `YBCGrid` are [PHOENIX](@ref YBCPHOENIX), [ATLAS9](@ref YBCATLAS9),
 the [Koester & Tremblay white dwarf grid](@ref YBCKoester), and the 
 [WM-basic O and B star grid](@ref YBCWMbasic).
@@ -174,6 +176,10 @@ the [Koester & Tremblay white dwarf grid](@ref YBCKoester), and the
 This type is used to create instances of [`YBCTable`](@ref) that have fixed dependent
 grid variables (\\[M/H\\], Av). This can be done either by calling an instance of
 `YBCGrid` with `(mh, Av)` arguments or by using the appropriate constructor for [`YBCTable`](@ref).
+
+If `extrapolate = true`, the ATLAS9 and WM-basic libraries will be extrapolated
+in metallicity with flat boundary conditions to match the metallicity coverage
+of the PHOENIX library. See the docs [here](@ref ybc_extrapolation) for more information.
 
 The `mass_loss_model::AbstractMassLoss` is used to calculate mass-loss rates on the fly
 for use with the [WM-basic O and B star grid](@ref YBCWMbasic). See the docs for [`YBCTable`](@ref)
@@ -197,13 +203,15 @@ struct YBCGrid{AA <: Number, A, B, C <: AbstractMassLoss, D <: AbstractVector{AA
     systems::Vector{String}
     name::String
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
+    extrapolate::Bool
 end
 
-function YBCGrid(grids, transitions, mass_loss_model, mag_zpt, systems, name, filternames)
-    return YBCGrid(grids, transitions, mass_loss_model, mag_zpt, String.(systems), String(name), tuple(Symbol.(filternames)...))
+function YBCGrid(grids, transitions, mass_loss_model, mag_zpt, systems, name, filternames, extrapolate)
+    return YBCGrid(grids, transitions, mass_loss_model, mag_zpt, String.(systems), String(name), tuple(Symbol.(filternames)...), extrapolate)
 end
 
 function YBCGrid(grid::AbstractString;
+                 extrapolate::Bool = true,
                  mass_loss_model::AbstractMassLoss = Bjorklund2021MassLoss(),
                  prefix::AbstractString="YBC",
                  phoenix_transition=(Teff=(5500f0, 6500f0),), # logg=(-Inf32, Inf32)), # Lower than Teff[1], use PHOENIX
@@ -217,7 +225,7 @@ function YBCGrid(grid::AbstractString;
              wmbasic = WMbasic.WMbasicYBCGrid(grid; prefix=prefix))
     transitions = (phoenix = phoenix_transition, wmbasic = wmbasic_transition, koester = koester_transition)
     f = first(grids)
-    return YBCGrid(grids, transitions, mass_loss_model, f.mag_zpt, f.systems, f.name, f.filters)
+    return YBCGrid(grids, transitions, mass_loss_model, f.mag_zpt, f.systems, f.name, f.filters, extrapolate)
 end
 (grid::YBCGrid)(mh::Real, Av::Real) = YBCTable(grid, mh, Av)
 Base.show(io::IO, z::YBCGrid) = print(io, "YBC bolometric correction grid for photometric system $(z.name).")
@@ -430,10 +438,34 @@ end
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
-    check_vals(mh, Av, extrema(grid))
+    extrapolate = grid.extrapolate # Bool, whether or not to extrapolate libraries in [M/H]
+    grids = grid.grids
     filters = filternames(grid)
-    tables = NamedTuple{keys(grid.grids)}(g(mh, Av) for g in grid.grids)
-    # tables = [g(mh, Av) for g in grid.grids]
+    # Validate A_v
+    if ~(mapreduce(x -> x[1] <= Av <= x[2], &, map(x->extrema(x).Av, grids)))
+        throw(ArgumentError("A_v = $Av is out of bounds for `YBCGrid`."))
+    end
+    if extrapolate
+        check_vals(mh, Av, extrema(grid))
+        tables = NamedTuple{keys(grids)}(begin
+                                            ext = extrema(g)
+                                            mh_tmp = mh
+                                            if :MH in keys(ext) # Koester doesn't have an MH entry
+                                                if mh < ext.MH[1]
+                                                    mh_tmp = ext.MH[1]
+                                                elseif mh > ext.MH[2]
+                                                    mh_tmp = ext.MH[2]
+                                                end
+                                            end
+                                            g(mh_tmp, Av)
+                                        end for g in grids)
+    else
+        if ~(mapreduce(x -> x[1] <= mh <= x[2], &, map(x->extrema(x).MH, (grids.phoenix, grids.atlas9, grids.wmbasic))))
+            throw(ArgumentError("[M/H] = $mh is out of bounds for `YBCGrid` with `extrapolation = false`."))
+        end
+        tables = NamedTuple{keys(grids)}(g(mh, Av) for g in grids)
+        # tables = [g(mh, Av) for g in grid.grids]
+    end
     return YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, tables, grid.transitions, grid.mass_loss_model, filters)
 end
 

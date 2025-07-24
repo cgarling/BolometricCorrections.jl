@@ -118,13 +118,15 @@ Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = l
 The individual submodules that constitute the YBC library have different assumptions about the solar chemical mixture. When you interpolate a [`YBCGrid`](@ref) to a particular metallicity \[M/H\], this is converted to the corresponding metal mass fraction [`Z`](@ref) for [`PARSECChemistry`](@ref BolometricCorrections.YBC.PARSECChemistry). Each of the submodules are then interpolated to this common metal mass fraction -- in this way, all the submodules are normalized to the same metal mass fraction, though their solar chemical mixtures are not identical. This is the same approach taken by [Chen2019](@citet).
 
 ## [Metallicity Extrapolation](@id ybc_extrapolation)
-The sub-libraries that make up the YBC grid do not have uniform metallicity coverage. The metallicity coverage for the PHOENIX, ATLAS9, and WM-basic libraries is shown below. The Koester & Tremblay white dwarf library does not consider metallicity as it assumes pure hydrogen atmospheres for the white dwarfs.
+The sub-libraries that make up the YBC grid do not have uniform metallicity coverage. The metallicity coverage for the PHOENIX, ATLAS9, and WM-basic libraries is shown below. The Koester & Tremblay white dwarf library does not consider metallicity as it assumes pure hydrogen atmospheres for the white dwarfs -- i.e., the white dwarf models are assumed to be valid for all initial protostellar metallicities.
 
 ```@example ybc
 NamedTuple{(:phoenix, :atlas9, :wmbasic)}(extrema(grid).MH for grid in (PHOENIXYBCGrid, ATLAS9YBCGrid, BolometricCorrections.YBC.WMbasic.WMbasicYBCGrid))
 ```
 
-As such, there is a choice to be made regarding how to treat metallicities that fall outside the range of one or more of the constituent libraries. We generally wish to maximize the useful extent of the BC grid while minimizing errors due to extrapolation. For cool stars, PHOENIX is used which has the greatest metallicity range. Attempts to interpolate a [`YBCTable`](@ref) outside the bounds of the PHOENIX metallicity range will throw an error. Extrapolation behavior is controlled by the `extrapolate::Bool` keyword argument that can be passed to [`YBCGrid`](@ref) which is `true` by default. When `extrapolate = true`, the ATLAS9 and WM-basic models will be extrapolated with a flat boundary condition to the same metallicity range as supported by the PHOENIX libary. Details and justification for this behavior is given below. This extrapolation can be disabled by setting the keyword `extrapolate = false` when constructing a [`YBCGrid`](@ref).
+Due to the difference in metallicity coverage, there is a choice to be made regarding how to treat metallicities that fall outside the range of one or more of the constituent libraries. We generally wish to maximize the useful extent of the BC grid while minimizing errors due to extrapolation. For cool stars, PHOENIX is used which has the greatest metallicity range. Attempts to interpolate a [`YBCTable`](@ref) outside the bounds of the PHOENIX metallicity range will throw an error.
+
+Extrapolation behavior is controlled by the `extrapolate::Bool` keyword argument that can be passed to [`YBCGrid`](@ref) which is `true` by default. When `extrapolate = true`, the ATLAS9 and WM-basic models will be extrapolated with a flat boundary condition to the same metallicity range as supported by the PHOENIX libary. Details and justification for this behavior is given below. This extrapolation can be disabled by setting the keyword `extrapolate = false` when constructing a [`YBCGrid`](@ref).
 
 ### ATLAS9
 
@@ -177,7 +179,7 @@ logg = range(extrema(WMbasicYBCGrid).logg...; length=1000) # hide
 Mdot = 1e-6 # hide
 mh_min = minimum(extrema(WMbasicYBCGrid).MH) # hide
 
-wmbasic_grid = WMbasicYBCGrid("jwst_nircam_wide")
+wmbasic_grid = WMbasicYBCGrid("jwst_nircam_wide") # hide
 table1, table2 = wmbasic_grid(mh_min, 0.0), wmbasic_grid(mh_min + 0.1, 0.0) # hide
 
 # Transposing logg will evaluate BC for every combination of Teff and logg # hide
@@ -201,7 +203,7 @@ text!(ax, 0.95, 0.95, text=L"Av = 0\n$\text{log} \left( \dot{M} \right) = %$(log
 f # hide
 ```
 
-Given that the WM-basic models are for hot O- and B-type stars, the alternative in YBC would be to use the ATLAS9 models which we discussed above. The ATLAS9 models have wider metallicity coverage, but do not consider the effects of outflowing material, which leads to significant discrepancies.
+Given that the WM-basic models are for hot O- and B-type stars, the alternative in YBC would be to use the ATLAS9 models which we discussed above. The ATLAS9 models have wider metallicity coverage, but do not consider the effects of outflowing material, which leads to significant discrepancies from the WM-basic models.
 
 ```@example ybc
 Teff = logrange(6_000, 50_000; length=1000) # hide

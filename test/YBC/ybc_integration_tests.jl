@@ -13,8 +13,31 @@ are approximately equal.
 """
 is_between(a, b, c) = (min(b, c) ≤ a ≤ max(b, c)) || (a ≈ b ≈ c)
 
-grid = YBCGrid("acs_wfc")
-# for mh in range(extrema(grid).MH...; step=0.1)
+# Test that with extrapolation on, we do not error
+grid = YBCGrid("acs_wfc"; extrapolate=true)
+@test grid(-3.0, 0.0) isa YBCTable
+@test grid(0.33, 0.0) isa YBCTable
+# Test that, for extrapolated [M/H], each constituent table has
+# either correct MH (for PHOENIX, which reaches -4)
+# or MH == grid minimum for library
+let mh = -3.0
+    table = grid(mh, 0.0)
+    for i in eachindex(table.tables)
+        t = table.tables[i]
+        if :MH in fieldnames(typeof(t)) # KoesterWDYBCTable doesn't have MH
+            @test (t.MH == mh) || (t.MH == minimum(extrema(grid.grids[i]).MH))
+        end
+    end
+end
+
+# Test that with extrapolation off, we error for invalid [M/H]
+grid = YBCGrid("acs_wfc"; extrapolate=false)
+@test_throws ArgumentError grid(-3.0, 0.0)
+@test_throws ArgumentError grid(1.0, 0.0)
+# Test invalid A_v
+@test_throws ArgumentError grid(0.0, 100.0)
+
+# Validate YBCTable behavior without YBCGrid extrapolation
 for mh in range(-2, 0; step=0.1)
     for Av in range(extrema(grid).Av...; step=0.1)
         # println(mh, " ", Av)
