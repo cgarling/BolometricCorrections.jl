@@ -25,7 +25,8 @@ const _Av = (0, 0.5, 1, 2, 5, 10, 20) # Mix of float and integer makes parsing F
 """ Unique values of metal mass fraction Z for the WM-basic models. """
 const _Z = dtype[0.0001, 0.0005, 0.001, 0.004, 0.008, 0.02]
 """Unique values of mass loss range in solar masses per year."""
-const _Mdot = logrange(convert(dtype, 1e-7), convert(dtype, 1e-5), 3) # dtype[1e-5, 1e-6, 1e-7]
+# const _Mdot = logrange(convert(dtype, 1e-7), convert(dtype, 1e-5), 3) # dtype[1e-5, 1e-6, 1e-7]
+const _Mdot = dtype[1e-7, 1e-6, 1e-5]
 const _logTeff = range(convert(dtype, 4.3), convert(dtype, 5.0); step=convert(dtype, 0.025))
 const _logg = range(convert(dtype, 2.5), convert(dtype, 6.0); step=convert(dtype, 0.5))
 # Mdot = 1.0e-5 only goes to logg = 5.5, not 6.0
@@ -255,10 +256,10 @@ Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)
                                            Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
 (table::WMbasicYBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real} = table.itp(logg, log10(Teff), log10(Mdot))
 (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
-(table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
-(table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+(table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
+(table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Methods to fix method ambiguities
 (::WMbasicYBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 (::WMbasicYBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
@@ -272,22 +273,33 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     MH_vec = gridinfo.MH
 
+    submatrix = Array{dtype, 3}(undef, size(data[1])..., 3)
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
-        submatrix = stack(data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)])
+        # submatrix = stack(data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)])
+        vecmat = data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)]
+        for i in eachindex(vecmat)
+            submatrix[:, :, i] .= vecmat[i]
+        end
     else
         if mh ∈ gridinfo.MH
             MH_idx = searchsortedfirst(MH_vec, mh)
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             vecmat1 = data[MH_idx, :, Av_idx] # Vector{Matrix} of length gridinfo.Mdot
             vecmat2 = data[MH_idx, :, Av_idx + 1]
-            submatrix = stack(interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            # submatrix = stack(interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            for i in eachindex(vecmat1, vecmat2)
+                submatrix[:, :, i] .= interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i])
+            end
         elseif Av ∈ gridinfo.Av
             Av_idx = searchsortedfirst(Av_vec, Av)
             MH_idx = searchsortedfirst(MH_vec, mh) - 1
             vecmat1 = data[MH_idx, :, Av_idx]
             vecmat2 = data[MH_idx + 1, :, Av_idx]
-            submatrix = stack(interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            # submatrix = stack(interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            for i in eachindex(vecmat1, vecmat2)
+                submatrix[:, :, i] .= interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i])
+            end
         else
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             Av1, Av2 = Av_vec[Av_idx], Av_vec[Av_idx + 1]
@@ -299,7 +311,10 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             vecmat1_2 = data[MH_idx, :, Av_idx + 1]
             vecmat2_2 = data[MH_idx + 1, :, Av_idx + 1]
             # Perform bilinear interpolation
-            submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
+            # submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
+            for i in eachindex(vecmat1_1)
+                submatrix[:, :, i] .= interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i])
+            end
         end
     end
     submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
