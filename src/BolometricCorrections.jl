@@ -38,7 +38,7 @@ Base.eltype(::AbstractBCGrid{T}) where T = T
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction grids (e.g., [Fe/H], Av).
 """
-function Base.extrema(::AbstractBCGrid) end
+Base.extrema(grid::AbstractBCGrid) = extrema(typeof(grid)) # Define Base.extrema(::Type{<:Grid}) for individual `Grid` types
 """
     Table(grid::AbstractBCGrid)
 
@@ -87,9 +87,10 @@ We additionally support automatic broadcasting over input arrays -- the followin
                                 args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
 """
 abstract type AbstractBCTable{T <: Real} end
-Base.eltype(::AbstractBCTable{T}) where T = T
+Base.eltype(::AbstractBCTable{T}) where {T} = T
 (table::AbstractBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg))
-function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable)(args::Vararg{AbstractArray{<:Real}, N}) where {N}
+    T = eltype(table)
     @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
     a1_axes = axes(first(args))
     Nelements = length(first(args))
@@ -106,8 +107,7 @@ function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) whe
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
-
-function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable)(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {N}
     filters = filternames(table)
     # Mostly fixed ~3--5 μs runtime cost
     return Table(Tables.table(PermutedDimsArray(table(args...), (2, 1)); header=filters))
@@ -128,7 +128,7 @@ end
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction table (e.g., `logg`, `Teff`).
 """
-Base.extrema(::AbstractBCTable)
+Base.extrema(table::AbstractBCTable) = extrema(typeof(table)) # Define Base.extrema(::Type{<:BCTable}) for individual `BCTable` types
 """
     Table(table::AbstractBCTable)
 
@@ -401,7 +401,7 @@ export MISTBCGrid, MISTBCTable
 include(joinpath("YBC", "YBC.jl"))
 using .YBC
 @compat public YBC
-export PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
+export YBCGrid, YBCTable, PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
 
 
 end # module
