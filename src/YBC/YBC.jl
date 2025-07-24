@@ -325,7 +325,7 @@ function Base.extrema(::Type{<:YBCTable})
 end
 
 function (table::YBCTable)(arg)
-    newarg = merge(arg, (Z = Z(table),)) # Add Z to arg for _parse_Mdot
+    newarg = merge(arg, (Z = convert(dtype, Z(table)),)) # Add Z to arg for _parse_Mdot
     return table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(newarg, table.mass_loss_model))
 end
 (table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
