@@ -85,16 +85,16 @@ function filternames(::AbstractBCGrid) end
 
 """ `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables such as `logg` and `Teff` should remain. `T` is the data type to use internally and is returned by `eltype`. Most `AbstractBCTable`s should be callable with scalar `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments `args...` such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. 
 
-    (table::AbstractTable{T})(Teff::Number, logg::Number, args...)
+    (table::AbstractTable)(Teff::Number, logg::Number, args...)
 
 Tables may also be called with a single argument (usually a `NamedTuple`) which has the necessary values stored as -- for example, `arg = (Teff = 2750, logg = 2.5)` could be passed directly to a `AbstractBCTable` without splatting.
 
-    (table::AbstractTable{T})(arg)
+    (table::AbstractTable)(arg)
 
 We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 
-    (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
-                                args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+    (table::AbstractBCTable)([::Type{TypedTables.Table},]
+                             args::Vararg{AbstractArray{<:Real}, N}) where {N}
 """
 abstract type AbstractBCTable{T <: Real} end
 Base.eltype(::AbstractBCTable{T}) where {T} = T
