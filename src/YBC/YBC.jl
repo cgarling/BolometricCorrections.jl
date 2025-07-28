@@ -2,7 +2,7 @@ module YBC
 
 # using ..BolometricCorrections: @compat
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -230,6 +230,7 @@ end
 (grid::YBCGrid)(mh::Real, Av::Real) = YBCTable(grid, mh, Av)
 Base.show(io::IO, z::YBCGrid) = print(io, "YBC bolometric correction grid for photometric system $(z.name).")
 filternames(grid::YBCGrid) = grid.filters
+gridname(::Type{<:YBCGrid}) = "YBC"
 chemistry(::Type{<:YBCGrid}) = PARSECChemistry()
 const _ybc_extrema = begin
     function _map_extrema(key::Symbol, ex)
@@ -315,6 +316,7 @@ end
 Base.show(io::IO, z::YBCTable) = print(io, "YBC bolometric correction table for system $(z.name) with [M/H] ",
                                        MH(z), " and V-band extinction ", z.Av)
 filternames(table::YBCTable) = table.filters
+gridname(::Type{<:YBCTable}) = "YBC"
 # zeropoints(table::YBCTable) = table.mag_zpt
 chemistry(::Type{<:YBCTable}) = PARSECChemistry()
 MH(t::YBCTable) = t.MH

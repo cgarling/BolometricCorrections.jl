@@ -15,8 +15,15 @@ is_between(a, b, c) = (min(b, c) ≤ a ≤ max(b, c)) || (a ≈ b ≈ c)
 
 # Test that with extrapolation on, we do not error
 grid = YBCGrid("acs_wfc"; extrapolate=true)
-@test grid(-3.0, 0.0) isa YBCTable
-@test grid(0.33, 0.0) isa YBCTable
+table1 = grid(-3.0, 0.0)
+table2 = grid(0.33, 0.0)
+@test table1 isa YBCTable
+@test table2 isa YBCTable
+
+@test gridname(YBCGrid) isa String
+@test gridname(grid) isa String
+@test gridname(YBCTable) isa String
+@test gridname(table1) isa String
 # Test that, for extrapolated [M/H], each constituent table has
 # either correct MH (for PHOENIX, which reaches -4)
 # or MH == grid minimum for library

@@ -3,6 +3,11 @@ using BolometricCorrections
 using StaticArrays: SVector
 
 grid = ATLAS9YBCGrid("acs_wfc")
+table1 = grid(-1.0, 0.0)
+@test gridname(grid) isa String
+@test gridname(ATLAS9YBCGrid) isa String
+@test gridname(table1) isa String
+@test gridname(ATLAS9YBCTable) isa String
 for mh in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.MH)...; step=0.1)
     for Av in range(extrema(BolometricCorrections.YBC.ATLAS9.gridinfo.Av)...; step=0.1)
         table = grid(mh, Av)

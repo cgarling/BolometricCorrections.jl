@@ -4,6 +4,11 @@ using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable, gridin
 using StaticArrays: SVector
 
 grid = WMbasicYBCGrid("acs_wfc")
+table1 = grid(-1.0, 0.0)
+@test gridname(WMbasicYBCGrid) isa String
+@test gridname(grid) isa String
+@test gridname(WMbasicYBCTable) isa String
+@test gridname(table1) isa String
 for mh in range(extrema(grid).MH[1], extrema(grid).MH[2]; length=10)
     for Av in range(extrema(grid).Av...; length=10)
         table = grid(mh, Av)

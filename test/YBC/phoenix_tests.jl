@@ -3,6 +3,11 @@ using BolometricCorrections
 using StaticArrays: SVector
 
 grid = PHOENIXYBCGrid("acs_wfc")
+table1 = grid(-1.0, 0.0)
+@test gridname(grid) isa String
+@test gridname(PHOENIXYBCGrid) isa String
+@test gridname(table1) isa String
+@test gridname(PHOENIXYBCTable) isa String
 for mh in range(extrema(BolometricCorrections.YBC.PHOENIX.gridinfo.MH)...; step=0.1)
     for Av in range(extrema(BolometricCorrections.YBC.PHOENIX.gridinfo.Av)...; step=0.1)
         table = grid(mh, Av)

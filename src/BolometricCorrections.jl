@@ -34,6 +34,16 @@ without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, 
 abstract type AbstractBCGrid{T <: Real} end
 Base.eltype(::AbstractBCGrid{T}) where T = T
 """
+    gridname(::Type{<:AbstractBCGrid})
+
+Returns a human-readable `String` identifier for the provided grid; should be provided for all grid types.
+
+    gridname(grid::AbstractBCGrid) = gridname(typeof(grid))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractBCGrid`.
+"""
+gridname(grid::AbstractBCGrid) = gridname(typeof(grid))
+"""
     extrema(grid::AbstractBCGrid)
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction grids (e.g., [Fe/H], Av).
@@ -123,6 +133,16 @@ end
 #     filters = filternames(table)
 #     return DataFrame(table(Teff, logg), SVector(filters))
 # end
+"""
+    gridname(::Type{<:AbstractBCTable})
+
+Returns a human-readable `String` identifier of the grid from which the provided table was derived. This should be provided for all table types.
+
+    gridname(table::AbstractBCTable) = gridname(typeof(table))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractBCTable`.
+"""
+gridname(table::AbstractBCTable) = gridname(typeof(table))
 """
     extrema(table::AbstractBCTable)
 
@@ -389,7 +409,7 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 
 #################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, filternames, zeropoints, vegamags,
+export Table, columnnames, columns, getproperties, gridname, filternames, zeropoints, vegamags,
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
