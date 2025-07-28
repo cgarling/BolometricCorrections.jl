@@ -4,7 +4,7 @@ YBC submodule exposing the bolometric corrections computed by the YBC team based
 module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix
 
 using ArgCheck: @argcheck
@@ -138,6 +138,7 @@ Base.extrema(::Type{<:KoesterWDYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff
                                             Av = (first(gridinfo.Av), last(gridinfo.Av)),
                                             Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::KoesterWDYBCGrid) = grid.filters
+gridname(::Type{<:KoesterWDYBCGrid}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCGrid}) = missing
 # zeropoints(::KoesterWDYBCGrid) = zpt
 
@@ -194,6 +195,7 @@ function KoesterWDYBCTable(Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp
 end
 Base.show(io::IO, z::KoesterWDYBCTable) = print(io, "YBC Koester white dwarf bolometric correction table with for system $(z.name) with V-band extinction ", z.Av)
 filternames(table::KoesterWDYBCTable) = table.filters
+gridname(::Type{<:KoesterWDYBCTable}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCTable}) = missing
 # zeropoints(table::KoesterWDYBCTable) = table.mag_zpt
 

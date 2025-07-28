@@ -17,9 +17,15 @@ using Test
 @test Lbol(zpt) isa Number
 
 grid = MISTBCGrid("JWST")
-@test zeropoints(grid) === zpt
 table1 = grid(-1.01, 0.01)
+@test zeropoints(grid) === zpt
 @test zeropoints(table1) === zpt
+
+@test gridname(MISTBCGrid) isa String
+@test gridname(grid) isa String
+@test gridname(MISTBCTable) isa String
+@test gridname(table1) isa String
+
 for feh in range(extrema(BolometricCorrections.MIST.gridinfo.feh)...; step=0.1)
     for Av in range(extrema(BolometricCorrections.MIST.gridinfo.Av)...; step=0.1)
         table = grid(feh, Av)

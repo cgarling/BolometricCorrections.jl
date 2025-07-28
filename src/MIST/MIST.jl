@@ -7,7 +7,7 @@ module MIST
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
                                interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                Y, Y_phot, Z, Z_phot, MH, chemistry
+                                Y, Y_phot, Z, Z_phot, MH, chemistry, gridname
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -324,6 +324,7 @@ Base.extrema(::Type{<:MISTBCGrid}) = (Teff = (first(gridinfo.Teff), last(gridinf
                                       Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 # filternames(grid::MISTBCGrid) = [string(name) for name in columnnames(grid)[6:end]]
 filternames(grid::MISTBCGrid) = columnnames(grid)[length(_mist_dependents)+1:end]
+gridname(::Type{<:MISTBCGrid}) = "MIST"
 zeropoints(::MISTBCGrid) = zpt
 
 
@@ -339,6 +340,7 @@ MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)...
 Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ",
                                           z.feh, " and V-band extinction ", z.Av)
 filternames(table::MISTBCTable) = table.filters
+gridname(::Type{<:MISTBCTable}) = "MIST"
 zeropoints(::MISTBCTable) = zpt
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg

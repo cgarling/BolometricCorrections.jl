@@ -13,7 +13,7 @@ using TypedTables: Table
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry
 
 # export ...
@@ -175,6 +175,7 @@ Base.extrema(::Type{<:WMbasicYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff))
                                           Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
                                           Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
+gridname(::Type{<:WMbasicYBCGrid}) = "YBC-WMbasic"
 # zeropoints(::WMbasicYBCGrid) = zpt
 chemistry(::Type{<:WMbasicYBCGrid}) = PARSECChemistry()
 
@@ -244,6 +245,7 @@ end
 Base.show(io::IO, z::WMbasicYBCTable) = print(io, "YBC WM-basic bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::WMbasicYBCTable) = table.filters
+gridname(::Type{<:WMbasicYBCTable}) = "YBC-WMbasic"
 # zeropoints(table::WMbasicYBCTable) = table.mag_zpt
 chemistry(::Type{<:WMbasicYBCTable}) = PARSECChemistry()
 MH(t::WMbasicYBCTable) = t.MH

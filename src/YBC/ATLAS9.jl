@@ -11,7 +11,7 @@ using StaticArrays: SVector
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
@@ -133,6 +133,7 @@ Base.extrema(::Type{<:ATLAS9YBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)),
                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::ATLAS9YBCGrid) = grid.filters
+gridname(::Type{<:ATLAS9YBCGrid}) = "YBC-ATLAS9"
 # zeropoints(::ATLAS9YBCGrid) = zpt
 
 #########################################################
@@ -192,6 +193,7 @@ end
 Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::ATLAS9YBCTable) = table.filters
+gridname(::Type{<:ATLAS9YBCTable}) = "YBC-ATLAS9"
 # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
 MH(t::ATLAS9YBCTable) = t.MH
 Z(t::ATLAS9YBCTable) = Z(chemistry(t), MH(t))
