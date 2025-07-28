@@ -7,7 +7,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
 
@@ -130,12 +130,13 @@ Base.show(io::IO, z::PHOENIXYBCGrid) = print(io, "YBC PHOENIX bolometric correct
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::PHOENIXYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:PHOENIXYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                          MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
+gridname(::Type{<:PHOENIXYBCGrid}) = "YBC-PHOENIX"
 chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
 # zeropoints(::PHOENIXYBCGrid) = zpt
 
@@ -201,16 +202,17 @@ chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistry()
 Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
+gridname(::Type{<:PHOENIXYBCTable}) = "YBC-PHOENIX"
 # zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
 MH(t::PHOENIXYBCTable) = t.MH
 Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::PHOENIXYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                   logg = (first(gridinfo.logg), last(gridinfo.logg)))
-# Base.extrema(::PHOENIXYBCTable) = (Teff = extrema(exp10.(gridinfo.logTeff)), logg = extrema(gridinfo.logg))
-(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+Base.extrema(::Type{<:PHOENIXYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                           logg = (first(gridinfo.logg), last(gridinfo.logg)))
+(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table(promote(Teff, logg)...)
+(table::PHOENIXYBCTable)(Teff::T, logg::T) where {T <: Real} = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::PHOENIXYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')

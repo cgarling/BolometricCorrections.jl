@@ -4,7 +4,7 @@ YBC submodule exposing the bolometric corrections computed by the YBC team based
 module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix
 
 using ArgCheck: @argcheck
@@ -69,13 +69,21 @@ that have fixed dependent grid variables (Av). This can be done either by callin
 Note that there is no variation with metallicity
 for this grid as it is specialized for white dwarfs only.
 
-```jldoctest
+```jldoctest koester
 julia> using BolometricCorrections.YBC.KoesterWD: KoesterWDYBCGrid
 
 julia> grid = KoesterWDYBCGrid("acs_wfc")
 YBC Koester white dwarf bolometric correction grid for photometric system YBC/acs_wfc.
 
 julia> grid(0.11) # Can be called to construct table with interpolated Av
+YBC Koester white dwarf bolometric correction table with for system YBC/acs_wfc with V-band extinction 0.11
+```
+
+As most subtypes of `AbstractBCGrid` accept two arguments `grid(MH, Av)`, we allow
+this call signature as well, but the `MH` argument is effectively ignored.
+
+```jldoctest koester
+julia> grid(-1, 0.11)
 YBC Koester white dwarf bolometric correction table with for system YBC/acs_wfc with V-band extinction 0.11
 ```
 """
@@ -118,17 +126,19 @@ function KoesterWDYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     end
     return KoesterWDYBCGrid(data, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, filternames)
 end
+(grid::KoesterWDYBCGrid)(mh::Real, Av::Real) = KoesterWDYBCTable(grid, Av) # mh is irrelevant
 (grid::KoesterWDYBCGrid)(Av::Real) = KoesterWDYBCTable(grid, Av)
 Base.show(io::IO, z::KoesterWDYBCGrid) = print(io, "YBC Koester white dwarf bolometric correction grid for photometric system $(z.name).")
 # function Table(grid::KoesterWDYBCGrid)
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::KoesterWDYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                    logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                    Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                    Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:KoesterWDYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                            logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                            Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                            Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::KoesterWDYBCGrid) = grid.filters
+gridname(::Type{<:KoesterWDYBCGrid}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCGrid}) = missing
 # zeropoints(::KoesterWDYBCGrid) = zpt
 
@@ -185,14 +195,16 @@ function KoesterWDYBCTable(Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp
 end
 Base.show(io::IO, z::KoesterWDYBCTable) = print(io, "YBC Koester white dwarf bolometric correction table with for system $(z.name) with V-band extinction ", z.Av)
 filternames(table::KoesterWDYBCTable) = table.filters
+gridname(::Type{<:KoesterWDYBCTable}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCTable}) = missing
 # zeropoints(table::KoesterWDYBCTable) = table.mag_zpt
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::KoesterWDYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                     logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+Base.extrema(::Type{<:KoesterWDYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                             logg = (first(gridinfo.logg), last(gridinfo.logg)))
+(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table(promote(Teff, logg)...)
+(table::KoesterWDYBCTable)(Teff::T, logg::T) where {T <: Real} = table.itp(logg, log10(Teff))
 # Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
 (table::KoesterWDYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
 # to broadcast over both teff and logg, you do table.(teff, logg')

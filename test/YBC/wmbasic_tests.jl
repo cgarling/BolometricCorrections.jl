@@ -1,11 +1,15 @@
 using Test: @test
 using BolometricCorrections
 using BolometricCorrections.YBC.WMbasic: WMbasicYBCGrid, WMbasicYBCTable, gridinfo
+using StaticArrays: SVector
 
 grid = WMbasicYBCGrid("acs_wfc")
-# Because this grid is defined in Z, slight roundoff errors occur on the conversion to MH so that
-# the ∈ operator does not catch the ends of MH. Should probably use ≈ rather than ∈
-for mh in range(extrema(grid).MH[1] + 0.01, extrema(grid).MH[2] - 0.01; length=10)
+table1 = grid(-1.0, 0.0)
+@test gridname(WMbasicYBCGrid) isa String
+@test gridname(grid) isa String
+@test gridname(WMbasicYBCTable) isa String
+@test gridname(table1) isa String
+for mh in range(extrema(grid).MH[1], extrema(grid).MH[2]; length=10)
     for Av in range(extrema(grid).Av...; length=10)
         table = grid(mh, Av)
         @test table isa WMbasicYBCTable
@@ -15,7 +19,7 @@ for mh in range(extrema(grid).MH[1] + 0.01, extrema(grid).MH[2] - 0.01; length=1
         @test Y(table) ≈ Y(chem, Z(table))
         @test X(table) ≈ X(chem, Z(table))
         for Mdot in range(extrema(table).Mdot...; length=10)
-            @test table(20_250.0, 3.51, Mdot) isa AbstractVector # technically SVector but ...
+            @test table(20_250.0, 3.51, Mdot) isa SVector{12, BolometricCorrections.YBC.dtype}
         end
     end
 end
