@@ -7,7 +7,7 @@ import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemis
 using ArgCheck: @argcheck
 using Compat: @compat
 import CSV
-using TypedTables: Table
+using TypedTables: Table, columnnames, columns
 
 """YBC data are stored in FITS files with natural datatype Float32."""
 const dtype = Float32
@@ -27,9 +27,22 @@ Given a `filter.info` file from YBC, return a `TypedTables.Table` with the corre
 function parse_filterinfo(f::AbstractString)
     # Contains final column with # <comments>, we don't want these so filter first
     cleaned = IOBuffer(join(map(line -> split(line, "#")[1], readlines(String(f))), "\n"))
-    return CSV.read(cleaned, Table; comment="#", delim=' ', ignorerepeated=true, 
-        header=["index", "names", "file", "effective_wavelength", "width", "flux_zeropoint", "photometric_system", "detector_type", "mag_zeropoint", "blank"])
-    # types=[Int, String, String, dtype, dtype, dtype, String, String, dtype, Int, String])
+    # Some filterinfo files do not contain the "name" column, so we read table, then determine size
+    # and write header accordingly
+    table = CSV.read(cleaned, Table; comment="#", delim=' ', ignorerepeated=true, header=false)
+    ncnames = length(columnnames(table))
+    if ncnames == 9
+        colnames = (:index, :file, :effective_wavelength, :width, :flux_zeropoint, :photometric_system, :detector_type, :mag_zeropoint)
+        datacols = values(columns(table))[begin:end-1]
+        nt = NamedTuple{colnames}(datacols)
+        return Table(nt, names = [splitext(i)[1] for i in nt.file])
+    elseif ncnames == 10
+        colnames = (:index, :names, :file, :effective_wavelength, :width, :flux_zeropoint, :photometric_system, :detector_type, :mag_zeropoint)
+        datacols = values(columns(table))[begin:end-1]
+        return Table(NamedTuple{colnames}(datacols))
+    else
+        error("Number of columns in filterinfo file $f not equal to 9 or 10 -- unable to parse.")
+    end
 end
 
 # Presently only supporting the standard YBC BCs, non-rotating
