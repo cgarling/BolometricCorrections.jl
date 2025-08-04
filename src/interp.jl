@@ -44,6 +44,10 @@ function fill_bad_values(mat::AbstractMatrix{T};
                          isbad = Base.Fix1(==, zero(T)), 
                          window::Int = 1,
                          diag::Bool = false) where {T <: Number}
+
+    if ~any(isbad, mat)
+        return mat
+    end
     a1, a2 = axes(mat)
     newmat = copy(mat)
 
