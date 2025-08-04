@@ -108,54 +108,29 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         error("File [M/H] values not as expected -- please report.")
     end
 
-    # data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
-    # for i in eachindex(files)
-    #     file = files[i]
-    #     FITS(file, "r") do f
-    #         _logg = read(f[2], "logg")
-    #         _logTeff = read(f[2], "logTeff")
-    #         for j in eachindex(gridinfo.Av)
-    #             Av = gridinfo.Av[j]
-    #             # Figure out FITS file column name for given Av
-    #             Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
-    #             # data[i,j] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-    #             tmpdata = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-    #             for idx in eachindex(_logg)
-    #                 idx_lg = searchsortedfirst(gridinfo.logg, _logg[idx])
-    #                 idx_lt = searchsortedfirst(gridinfo.logTeff, _logTeff[idx])
-    #                 data[idx_lg, idx_lt, :, i, j] .= @view(tmpdata[idx, :])
-    #             end
-    #         end
-    #     end
-    # end
-
-    # # Loop and fill in missing (bad) values == 0
-    # for i=axes(data, 3), j=axes(data, 4), k=axes(data, 5)
-    #     tmpdata = @view(data[:,:,i,j,k])
-    #     if zero(dtype) in tmpdata
-    #         tmpdata .= fill_bad_values(tmpdata; isbad = Base.Fix1(==, zero(dtype)), window = 1, diag = false)
-    #     end
-    # end
-
     data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
         FITS(file, "r") do f
+            # Need to figure out how much of the logg, logTeff grid this data covers
+            # Not all filter systems have the same logg, logTeff grid unfortunately
             _logg = read(f[2], "logg")
             _logTeff = read(f[2], "logTeff")
             u_logg = sort(unique(_logg))
             u_logTeff = sort(unique(_logTeff))
             lg_1, lg_2 = searchsortedfirst(gridinfo.logg, first(u_logg)), searchsortedfirst(gridinfo.logg, last(u_logg))
             lt_1, lt_2 = searchsortedfirst(gridinfo.logTeff, first(u_logTeff)), searchsortedfirst(gridinfo.logTeff, last(u_logTeff))
+
             for j in eachindex(gridinfo.Av)
                 Av = gridinfo.Av[j]
                 # Figure out FITS file column name for given Av
                 Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
                 for k in eachindex(filternames)
                     tmpdata = read(f[2], String(filternames[k])*Av_prefix)
-                    data[lg_1:lg_2, lt_1:lt_2, :, i, j] .= reshape(tmpdata, length(u_logg), length(u_logTeff))
+                    data[lg_1:lg_2, lt_1:lt_2, k, i, j] .= reshape(tmpdata, length(u_logg), length(u_logTeff))
                 end
             end
+
             # Extrapolate matrix if data does not cover full gridinfo range
             if lg_1 != 1
                 for k in 1:lg_1
@@ -345,7 +320,8 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
             submatrix = interp2d(mh, Av, mh1, mh2, Av1, Av2, mat1_1, mat2_1, mat1_2, mat2_2)
         end
     end
-    newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
+    # newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
+    newdata = repack_submatrix(submatrix, Val(length(filters)))
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
