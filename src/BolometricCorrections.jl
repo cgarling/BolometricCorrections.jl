@@ -6,6 +6,7 @@ using StaticArrays: SVector
 import CSV
 import Tables
 import TypedTables: Table, columnnames, columns, getproperties
+using StatsBase: mean
 
 # exports from top-level module
 # const test = "asdf" # This is exported at the module level
