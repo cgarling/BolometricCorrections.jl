@@ -6,7 +6,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 """
 module PHOENIX
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, fill_bad_values
+using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
@@ -108,32 +108,75 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         error("File [M/H] values not as expected -- please report.")
     end
 
+    # data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
+    # for i in eachindex(files)
+    #     file = files[i]
+    #     FITS(file, "r") do f
+    #         _logg = read(f[2], "logg")
+    #         _logTeff = read(f[2], "logTeff")
+    #         for j in eachindex(gridinfo.Av)
+    #             Av = gridinfo.Av[j]
+    #             # Figure out FITS file column name for given Av
+    #             Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
+    #             # data[i,j] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+    #             tmpdata = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+    #             for idx in eachindex(_logg)
+    #                 idx_lg = searchsortedfirst(gridinfo.logg, _logg[idx])
+    #                 idx_lt = searchsortedfirst(gridinfo.logTeff, _logTeff[idx])
+    #                 data[idx_lg, idx_lt, :, i, j] .= @view(tmpdata[idx, :])
+    #             end
+    #         end
+    #     end
+    # end
+
+    # # Loop and fill in missing (bad) values == 0
+    # for i=axes(data, 3), j=axes(data, 4), k=axes(data, 5)
+    #     tmpdata = @view(data[:,:,i,j,k])
+    #     if zero(dtype) in tmpdata
+    #         tmpdata .= fill_bad_values(tmpdata; isbad = Base.Fix1(==, zero(dtype)), window = 1, diag = false)
+    #     end
+    # end
+
     data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
         FITS(file, "r") do f
             _logg = read(f[2], "logg")
             _logTeff = read(f[2], "logTeff")
+            u_logg = sort(unique(_logg))
+            u_logTeff = sort(unique(_logTeff))
+            lg_1, lg_2 = searchsortedfirst(gridinfo.logg, first(u_logg)), searchsortedfirst(gridinfo.logg, last(u_logg))
+            lt_1, lt_2 = searchsortedfirst(gridinfo.logTeff, first(u_logTeff)), searchsortedfirst(gridinfo.logTeff, last(u_logTeff))
             for j in eachindex(gridinfo.Av)
                 Av = gridinfo.Av[j]
                 # Figure out FITS file column name for given Av
                 Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
-                # data[i,j] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-                tmpdata = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-                for idx in eachindex(_logg)
-                    idx_lg = searchsortedfirst(gridinfo.logg, _logg[idx])
-                    idx_lt = searchsortedfirst(gridinfo.logTeff, _logTeff[idx])
-                    data[idx_lg, idx_lt, :, i, j] .= @view(tmpdata[idx, :])
+                for k in eachindex(filternames)
+                    tmpdata = read(f[2], String(filternames[k])*Av_prefix)
+                    data[lg_1:lg_2, lt_1:lt_2, :, i, j] .= reshape(tmpdata, length(u_logg), length(u_logTeff))
                 end
             end
-        end
-    end
-
-    # Loop and fill in missing (bad) values == 0
-    for i=axes(data, 3), j=axes(data, 4), k=axes(data, 5)
-        tmpdata = @view(data[:,:,i,j,k])
-        if zero(dtype) in tmpdata
-            tmpdata .= fill_bad_values(tmpdata; isbad = Base.Fix1(==, zero(dtype)), window = 1, diag = false)
+            # Extrapolate matrix if data does not cover full gridinfo range
+            if lg_1 != 1
+                for k in 1:lg_1
+                    data[k, :, :, :, :] .= @view(data[lg_1, :, :, :, :])
+                end
+            end
+            if lg_2 != lastindex(gridinfo.logg)
+                for k in lg_2:lastindex(gridinfo.logg)
+                    data[k, :, :, :, :] .= @view(data[lg_2, :, :, :, :])
+                end
+            end
+            if lt_1 != 1
+                for k in 1:lt_1
+                    data[:, k, :, :, :] .= @view(data[:, lt_1, :, :, :])
+                end
+            end
+            if lt_2 != lastindex(gridinfo.logTeff)
+                for k in lt_2:lastindex(gridinfo.logTeff)
+                    data[:, k, :, :, :] .= @view(data[:, lt_2, :, :, :])
+                end
+            end
         end
     end
     return PHOENIXYBCGrid(data, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, filternames)

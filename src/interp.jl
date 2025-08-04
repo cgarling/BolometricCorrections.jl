@@ -33,54 +33,54 @@ function interp2d(x::Number, y::Number, x1::Number, x2::Number, y1::Number, y2::
     return @. (z1_1 * (x2 - x) * (y2 - y) + z1_2 * (x2 - x) * (y - y1) + z2_1 * (x - x1) * (y2 - y) + z2_2 * (x - x1) * (y - y1)) / (x2 - x1) / (y2 - y1)
 end
 
-"""
-    fill_bad_values(mat::AbstractMatrix{T}; 
-                    isbad = Base.Fix1(==, zero(T)), 
-                    window::Int = 1,
-                    diag::Bool = false) where {T <: Number}
-Returns a matrix similar to `mat` but with elements where `isbad(mat[i,j]) == true` are replaced by an average of valid neighbors. If `diag == true`, then elements on diagonals are included when calculating the replacement values; if `false`, then only elements in cardinal directions are considered. 
-"""
-function fill_bad_values(mat::AbstractMatrix{T}; 
-                         isbad = Base.Fix1(==, zero(T)), 
-                         window::Int = 1,
-                         diag::Bool = false) where {T <: Number}
+# """
+#     fill_bad_values(mat::AbstractMatrix{T}; 
+#                     isbad = Base.Fix1(==, zero(T)), 
+#                     window::Int = 1,
+#                     diag::Bool = false) where {T <: Number}
+# Returns a matrix similar to `mat` but with elements where `isbad(mat[i,j]) == true` are replaced by an average of valid neighbors. If `diag == true`, then elements on diagonals are included when calculating the replacement values; if `false`, then only elements in cardinal directions are considered. 
+# """
+# function fill_bad_values(mat::AbstractMatrix{T}; 
+#                          isbad = Base.Fix1(==, zero(T)), 
+#                          window::Int = 1,
+#                          diag::Bool = false) where {T <: Number}
 
-    if ~any(isbad, mat)
-        return mat
-    end
-    a1, a2 = axes(mat)
-    newmat = copy(mat)
+#     if ~any(isbad, mat)
+#         return mat
+#     end
+#     a1, a2 = axes(mat)
+#     newmat = copy(mat)
 
-    if diag # If counting elements in diagonal directions,
-        steps = [(i, j) for i=-window:window, j=-window:window if (i ≠ 0) || (j ≠ 0)]
-    else # If using only cardinal directions,
-        steps = [(w, 0) for w in -window:window if w ≠ 0] ∪ [(0, w) for w in -window:window if w ≠ 0]
-    end
+#     if diag # If counting elements in diagonal directions,
+#         steps = [(i, j) for i=-window:window, j=-window:window if (i ≠ 0) || (j ≠ 0)]
+#     else # If using only cardinal directions,
+#         steps = [(w, 0) for w in -window:window if w ≠ 0] ∪ [(0, w) for w in -window:window if w ≠ 0]
+#     end
 
-    for i=a1, j=a2
-        if isbad(mat[i, j])
-            vals = T[]
-            # for di in -window:window, dj in -window:window
-            for (di, dj) in steps
-                ii, jj = i + di, j + dj
-                if checkbounds(Bool, mat, ii, jj) && !isbad(mat[ii, jj])
-                    push!(vals, mat[ii, jj])
-                end
-            end
-            if !isempty(vals)
-                newmat[i, j] = mean(vals)
-            end
-        end
-    end
+#     for i=a1, j=a2
+#         if isbad(mat[i, j])
+#             vals = T[]
+#             # for di in -window:window, dj in -window:window
+#             for (di, dj) in steps
+#                 ii, jj = i + di, j + dj
+#                 if checkbounds(Bool, mat, ii, jj) && !isbad(mat[ii, jj])
+#                     push!(vals, mat[ii, jj])
+#                 end
+#             end
+#             if !isempty(vals)
+#                 newmat[i, j] = mean(vals)
+#             end
+#         end
+#     end
 
-    # Recursively call until no bad values remaining
-    while any(isbad, newmat)
-        newmat = fill_bad_values(newmat)
-    end
+#     # Recursively call until no bad values remaining
+#     while any(isbad, newmat)
+#         newmat = fill_bad_values(newmat)
+#     end
 
-    return newmat
+#     return newmat
 
-end
+# end
 
 # Use statically known size from filters argument to repack submatrix
 # into a vector of SVectors to pass into interpolator
