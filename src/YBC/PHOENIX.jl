@@ -19,7 +19,7 @@ using Interpolations: cubic_spline_interpolation, Throw, Flat
 # import CSV
 using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
-using TypedTables: Table, getproperties
+using TypedTables: Table
 
 export PHOENIXYBCTable, PHOENIXYBCGrid
 
