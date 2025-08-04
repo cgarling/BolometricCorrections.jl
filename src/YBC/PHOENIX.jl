@@ -6,7 +6,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 """
 module PHOENIX
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
+using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, fill_bad_values
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
 using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
@@ -19,7 +19,7 @@ using Interpolations: cubic_spline_interpolation, Throw, Flat
 # import CSV
 using Printf: @sprintf # Formatted conversion of floats to strings
 using StaticArrays: SVector
-using TypedTables: Table
+using TypedTables: Table, getproperties
 
 export PHOENIXYBCTable, PHOENIXYBCGrid
 
@@ -77,14 +77,14 @@ true
 ```
 """
 struct PHOENIXYBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
-    data::Matrix{Matrix{A}} # A should be Float32
+    data::Array{A, 5} # A should be Float32
     mag_zpt::C
     systems::Vector{String}
     name::String
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 
-function PHOENIXYBCGrid(data::Matrix{Matrix{A}}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
+function PHOENIXYBCGrid(data::Array{A, 5}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
     return PHOENIXYBCGrid(data, convert.(A, mag_zpt), String.(systems), String(name), tuple(Symbol.(filternames)...))
 end
 
@@ -100,7 +100,6 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
     filternames = filterinfo.names
-    # mh_vals = [_parse_filename(file).MH for file in files]
     # Sort files by [M/H] value
     idxs = sortperm([_parse_filename(file).MH for file in files])
     files = files[idxs]
@@ -109,17 +108,32 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         error("File [M/H] values not as expected -- please report.")
     end
 
-    # Read all data and pack into dense matrix
-    data = Matrix{Matrix{dtype}}(undef, length(files), length(gridinfo.Av))
+    data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
         FITS(file, "r") do f
+            _logg = read(f[2], "logg")
+            _logTeff = read(f[2], "logTeff")
             for j in eachindex(gridinfo.Av)
                 Av = gridinfo.Av[j]
                 # Figure out FITS file column name for given Av
                 Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
-                data[i,j] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+                # data[i,j] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+                tmpdata = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+                for idx in eachindex(_logg)
+                    idx_lg = searchsortedfirst(gridinfo.logg, _logg[idx])
+                    idx_lt = searchsortedfirst(gridinfo.logTeff, _logTeff[idx])
+                    data[idx_lg, idx_lt, :, i, j] .= @view(tmpdata[idx, :])
+                end
             end
+        end
+    end
+
+    # Loop and fill in missing (bad) values == 0
+    for i=axes(data, 3), j=axes(data, 4), k=axes(data, 5)
+        tmpdata = @view(data[:,:,i,j,k])
+        if zero(dtype) in tmpdata
+            tmpdata .= fill_bad_values(tmpdata; isbad = Base.Fix1(==, zero(dtype)), window = 1, diag = false)
         end
     end
     return PHOENIXYBCGrid(data, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, filternames)
@@ -260,57 +274,36 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
 
     # Exact values are in grid; no interpolation necessary
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
-        # Account for the fact that logg = 6 is missing for mh <= -2.5.
-        logg = mh > -2.5 ? gridinfo.logg : gridinfo.logg[begin:end-1]
-        submatrix = data[searchsortedfirst(MH_vec, mh), searchsortedfirst(Av_vec, Av)]
+        submatrix = data[:, :, :, searchsortedfirst(MH_vec, mh), searchsortedfirst(Av_vec, Av)]
     else
         if mh ∈ gridinfo.MH
-            # Account for the fact that logg = 6 is missing for mh <= -2.5.
-            logg = mh > -2.5 ? gridinfo.logg : gridinfo.logg[begin:end-1]
             MH_idx = searchsortedfirst(MH_vec, mh)
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
-            mat1 = data[MH_idx, Av_idx]
-            mat2 = data[MH_idx, Av_idx + 1]
+            mat1 = data[:, :, :, MH_idx, Av_idx]
+            mat2 = data[:, :, :, MH_idx, Av_idx + 1]
             submatrix = interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], mat1, mat2)
         elseif Av ∈ gridinfo.Av
-            # Account for the fact that logg = 6 is missing for mh <= -2.5.
-            logg = mh > -2 ? gridinfo.logg : gridinfo.logg[begin:end-1]
             Av_idx = searchsortedfirst(Av_vec, Av)
             MH_idx = searchsortedfirst(MH_vec, mh) - 1
-            mat1 = data[MH_idx, Av_idx]
-            mat2 = data[MH_idx + 1, Av_idx]
-            # Any interpolation between -2.5 < mh < -2 
-            # will have data matrices of different shapes -- properly truncate longer matrix
-            if -2.5 < mh < -2
-                # logg is iterated first in mat1 and mat2; dims are (logg, logTeff). 
-                # Need to skip every Nth element, where N = length(gridinfo.logg)
-                filtered = [i for i in axes(mat2, 1) if i % length(gridinfo.logg) != 0]
-                mat2 = mat2[filtered, :]
-            end
+            mat1 = data[:, :, :, MH_idx, Av_idx]
+            mat2 = data[:, :, :, MH_idx + 1, Av_idx]
             submatrix = interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], mat1, mat2)
         else
-            # Account for the fact that logg = 6 is missing for mh <= -2.5.
-            logg = mh > -2 ? gridinfo.logg : gridinfo.logg[begin:end-1]
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             Av1, Av2 = Av_vec[Av_idx], Av_vec[Av_idx + 1]
             MH_idx = searchsortedfirst(MH_vec, mh) - 1
             mh1, mh2 = MH_vec[MH_idx], MH_vec[MH_idx + 1]
 
-            mat1_1 = data[MH_idx, Av_idx]
-            mat2_1 = data[MH_idx + 1, Av_idx]
-            mat1_2 = data[MH_idx, Av_idx + 1]
-            mat2_2 = data[MH_idx + 1, Av_idx + 1]
-            if -2.5 < mh < -2 # See above
-                filtered = [i for i in axes(mat2_1, 1) if i % length(gridinfo.logg) != 0]
-                mat2_1 = mat2_1[filtered, :]
-                mat2_2 = mat2_2[filtered, :]
-            end
+            mat1_1 = data[:, :, :, MH_idx, Av_idx]
+            mat2_1 = data[:, :, :, MH_idx + 1, Av_idx]
+            mat1_2 = data[:, :, :, MH_idx, Av_idx + 1]
+            mat2_2 = data[:, :, :, MH_idx + 1, Av_idx + 1]
             # Perform bilinear interpolation
             submatrix = interp2d(mh, Av, mh1, mh2, Av1, Av2, mat1_1, mat2_1, mat1_2, mat2_2)
         end
     end
-    newdata = repack_submatrix(submatrix, length(logg), length(gridinfo.logTeff), Val(length(filters)))
-    itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
+    newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
+    itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
 PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = PHOENIXYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
