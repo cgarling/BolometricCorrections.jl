@@ -5,6 +5,7 @@ using StaticArrays: SVector
 
 grid = WMbasicYBCGrid("acs_wfc")
 table1 = grid(-1.0, 0.0)
+@test table1(24_000.0, 3.14, 1e-6) ≈ BolometricCorrections.YBC.dtype[-2.208993, -2.3101966, -2.28842, -2.5616233, -2.2280855, -2.3333433, -2.3151662, -2.5801084, -2.2240276, -2.3268185, -2.2955875, -2.5536644]
 @test gridname(WMbasicYBCGrid) isa String
 @test gridname(grid) isa String
 @test gridname(WMbasicYBCTable) isa String
