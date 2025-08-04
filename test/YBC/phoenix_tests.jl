@@ -4,6 +4,8 @@ using StaticArrays: SVector
 
 grid = PHOENIXYBCGrid("acs_wfc")
 table1 = grid(-1.0, 0.0)
+# One regression test
+@test table1(3500.0, 0.1) ≈ BolometricCorrections.YBC.dtype[-3.6615107, -2.9102192, -2.8467753, -1.7102648, -2.0258598, -1.506531, -1.1820091, -0.9494957, -0.9117589, 0.14530413, 0.33153394, 0.73742735]
 @test gridname(grid) isa String
 @test gridname(PHOENIXYBCGrid) isa String
 @test gridname(table1) isa String
