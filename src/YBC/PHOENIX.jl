@@ -271,13 +271,14 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
+        logg = sort(unique(read(f[2], "logg")))
+        logTeff = sort(unique(read(f[2], "logTeff")))
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs
-        # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
-        # Account for the fact that logg = 6 is missing for mh <= -2.5
-        # println(length(unique(read(f[2], "logg"))) * length(unique(read(f[2], "logTeff"))))
-        logg = mh > -2.5 ? gridinfo.logg : gridinfo.logg[begin:end-1]
-        newdata = repack_submatrix(data, length(logg), length(gridinfo.logTeff), Val(length(filternames)))
-        itp = cubic_spline_interpolation((logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
+        newdata = repack_submatrix(reshape(data, length(logg), length(logTeff), length(filternames)), Val(length(filternames)))
+        # interpolation requires range objects, so we index into the gridinfo entries
+        knots = (gridinfo.logg[searchsortedfirst(gridinfo.logg, logg[1]):searchsortedfirst(gridinfo.logg, logg[end])],
+                 gridinfo.logTeff[searchsortedfirst(gridinfo.logTeff, logTeff[1]):searchsortedfirst(gridinfo.logTeff, logTeff[end])])
+        itp = cubic_spline_interpolation(knots, newdata; extrapolation_bc=Flat())
         return PHOENIXYBCTable(mh, Av, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
     end
 end
@@ -320,7 +321,6 @@ function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
             submatrix = interp2d(mh, Av, mh1, mh2, Av1, Av2, mat1_1, mat2_1, mat1_2, mat2_2)
         end
     end
-    # newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
     newdata = repack_submatrix(submatrix, Val(length(filters)))
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
