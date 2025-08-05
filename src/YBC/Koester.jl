@@ -88,14 +88,14 @@ YBC Koester white dwarf bolometric correction table with for system YBC/acs_wfc 
 ```
 """
 struct KoesterWDYBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
-    data::Vector{Matrix{A}} # A should be Float32
+    data::Array{A, 4} # A should be Float32
     mag_zpt::C
     systems::Vector{String}
     name::String
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 
-function KoesterWDYBCGrid(data::Vector{Matrix{A}}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
+function KoesterWDYBCGrid(data::Array{A, 4}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
     return KoesterWDYBCGrid(data, convert.(A, mag_zpt), String.(systems), String(name), tuple(Symbol.(filternames)...))
 end
 
@@ -112,18 +112,48 @@ function KoesterWDYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
     filternames = filterinfo.names
 
-    # Koester WD only has one file
+    # Koester WD only has one file -- no [M/H] dependence
     file = first(files)
-    # Read all data and pack into dense matrix
-    data = Vector{Matrix{dtype}}(undef, length(gridinfo.Av))
+    data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(gridinfo.Av))
     FITS(file, "r") do f
+        # Need to figure out how much of the logg, logTeff grid this data covers
+        # Not all filter systems have the same logg, logTeff grid unfortunately
+        u_logg = sort(unique(read(f[2], "logg")))
+        u_logTeff = sort(unique(read(f[2], "logTeff")))
+        lg_1, lg_2 = searchsortedfirst(gridinfo.logg, first(u_logg)), searchsortedfirst(gridinfo.logg, last(u_logg))
+        lt_1, lt_2 = searchsortedfirst(gridinfo.logTeff, first(u_logTeff)), searchsortedfirst(gridinfo.logTeff, last(u_logTeff))
         for i in eachindex(gridinfo.Av)
             Av = gridinfo.Av[i]
             # Figure out FITS file column name for given Av
             Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
-            data[i] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+            for k in eachindex(filternames)
+                tmpdata = read(f[2], String(filternames[k])*Av_prefix)
+                data[lg_1:lg_2, lt_1:lt_2, k, i] .= reshape(tmpdata, length(u_logg), length(u_logTeff))
+            end
+        end
+        # Extrapolate matrix if data does not cover full gridinfo range
+        if lg_1 != 1
+            for k in 1:lg_1
+                data[k, :, :, :] .= @view(data[lg_1, :, :, :])
+            end
+        end
+        if lg_2 != lastindex(gridinfo.logg)
+            for k in lg_2:lastindex(gridinfo.logg)
+                data[k, :, :, :] .= @view(data[lg_2, :, :, :])
+            end
+        end
+        if lt_1 != 1
+            for k in 1:lt_1
+                data[:, k, :, :] .= @view(data[:, lt_1, :, :])
+            end
+        end
+        if lt_2 != lastindex(gridinfo.logTeff)
+            for k in lt_2:lastindex(gridinfo.logTeff)
+                data[:, k, :, :] .= @view(data[:, lt_2, :, :])
+            end
         end
     end
+
     return KoesterWDYBCGrid(data, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, filternames)
 end
 (grid::KoesterWDYBCGrid)(mh::Real, Av::Real) = KoesterWDYBCTable(grid, Av) # mh is irrelevant
@@ -230,29 +260,33 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
-        data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-        # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
-        newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
-        itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
+        logg = sort(unique(read(f[2], "logg")))
+        logTeff = sort(unique(read(f[2], "logTeff")))
+        data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs
+        newdata = repack_submatrix(reshape(data, length(logg), length(logTeff), length(filternames)), Val(length(filternames)))
+        # interpolation requires range objects, so we index into the gridinfo entries
+        knots = (gridinfo.logg[searchsortedfirst(gridinfo.logg, logg[1]):searchsortedfirst(gridinfo.logg, logg[end])],
+                 gridinfo.logTeff[searchsortedfirst(gridinfo.logTeff, logTeff[1]):searchsortedfirst(gridinfo.logTeff, logTeff[end])])
+        itp = cubic_spline_interpolation(knots, newdata; extrapolation_bc=Flat())
         return KoesterWDYBCTable(Av, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
     end
 end
 
-function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
+@views function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
     check_vals(Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
     Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     if Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
-        submatrix = data[searchsortedfirst(Av_vec, Av)]
+        submatrix = data[:, :, :, searchsortedfirst(Av_vec, Av)]
     else
         Av_idx = searchsortedfirst(Av_vec, Av) - 1
-        mat1 = data[Av_idx]
-        mat2 = data[Av_idx + 1]
-        submatrix = interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], mat1, mat2)       
+        mat1 = data[:, :, :, Av_idx]
+        mat2 = data[:, :, :, Av_idx + 1]
+        submatrix = interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], mat1, mat2)
     end
-    newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
+    newdata = repack_submatrix(submatrix, Val(length(filters)))
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return KoesterWDYBCTable(Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
