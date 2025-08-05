@@ -114,10 +114,8 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         FITS(file, "r") do f
             # Need to figure out how much of the logg, logTeff grid this data covers
             # Not all filter systems have the same logg, logTeff grid unfortunately
-            _logg = read(f[2], "logg")
-            _logTeff = read(f[2], "logTeff")
-            u_logg = sort(unique(_logg))
-            u_logTeff = sort(unique(_logTeff))
+            u_logg = sort(unique(read(f[2], "logg")))
+            u_logTeff = sort(unique(read(f[2], "logTeff")))
             lg_1, lg_2 = searchsortedfirst(gridinfo.logg, first(u_logg)), searchsortedfirst(gridinfo.logg, last(u_logg))
             lt_1, lt_2 = searchsortedfirst(gridinfo.logTeff, first(u_logTeff)), searchsortedfirst(gridinfo.logTeff, last(u_logTeff))
 
@@ -283,7 +281,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     end
 end
 
-function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
+@views function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
     check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
