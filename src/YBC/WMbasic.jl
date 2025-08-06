@@ -5,7 +5,7 @@ module WMbasic
 
 using ArgCheck: @argcheck
 using Compat: @compat, logrange, stack
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using Printf: @sprintf
 using StaticArrays: SVector
@@ -14,7 +14,7 @@ using TypedTables: Table
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
 
@@ -60,6 +60,13 @@ function _parse_filename(f::AbstractString)
     return (Z = Z, Mdot = Mdot)
 end
 
+"""
+    _wmbasic_filename(Z, Mdot)
+Given the value of Z and Mdot, returns the filename of the corresponding WMbasic file (example: "Avodonnell94Rv3.1WM_Z0.0001Mdot5.BC.fits").
+"""
+_wmbasic_filename(Z, Mdot) = "Avodonnell94Rv3.1WM_Z" * string(Z) * "Mdot" * @sprintf("%1i", log10(Mdot))[2] * ".BC.fits"
+
+
 #########################################################
 
 """
@@ -97,15 +104,15 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     check_prefix(prefix)
     path = pull_table(String(grid), String(prefix))
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Read all data and pack into dense matrix
+    filternames = filter_fits_colnames(colnames(FITS(joinpath(path, "regrid", _wmbasic_filename(first(gridinfo.Z), first(gridinfo.Mdot))), "r")[2]))
     data = Array{Matrix{dtype}, 3}(undef, length(gridinfo.Z), length(gridinfo.Mdot), length(gridinfo.Av))
     for i in eachindex(gridinfo.Z)
         z = gridinfo.Z[i]
         for j in eachindex(gridinfo.Mdot)
             mdot = gridinfo.Mdot[j]
-            file = joinpath(path, "regrid", "Avodonnell94Rv3.1WM_Z" * string(z) * "Mdot" * @sprintf("%1i", log10(mdot))[2] * ".BC.fits")
+            file = joinpath(path, "regrid", _wmbasic_filename(z, mdot))
             if !isfile(file)
                 error("YBC WM-basic file $file missing. Data may be corrupted. Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
             end
