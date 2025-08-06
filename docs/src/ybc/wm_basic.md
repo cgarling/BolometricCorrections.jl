@@ -30,7 +30,7 @@ plot_data = [d[filter_index] for d in data] # hide
 f = Figure() # hide
 ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$") # hide
 ax.xreversed = true # hide
-p = heatmap!(ax, log10.(Teff), logg, plot_data; interpolate=false, colormap=:viridis) # , colormap=:cividis) # hide
+p = heatmap!(ax, log10.(Teff), logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis) # hide
 Colorbar(f[:, end+1], p) # hide
 
 ax.title = "YBC WM-basic BCs for JWST/NIRCam F090W" # hide
