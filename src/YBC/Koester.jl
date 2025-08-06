@@ -5,11 +5,11 @@ module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, filter_fits_colnames
 
 using ArgCheck: @argcheck
 using Compat: @compat
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
@@ -110,10 +110,10 @@ function KoesterWDYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Koester WD only has one file -- no [M/H] dependence
     file = first(files)
+    filternames = filter_fits_colnames(colnames(FITS(first(files), "r")[2]))
     data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(gridinfo.Av))
     FITS(file, "r") do f
         # Need to figure out how much of the logg, logTeff grid this data covers
@@ -252,7 +252,6 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Koester WD only has one file
     goodfile = first(files)
@@ -260,6 +259,7 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
+        filternames = filter_fits_colnames(colnames(f[2]))
         logg = sort(unique(read(f[2], "logg")))
         logTeff = sort(unique(read(f[2], "logTeff")))
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs

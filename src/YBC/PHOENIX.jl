@@ -9,7 +9,7 @@ module PHOENIX
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -99,7 +99,6 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
     # Sort files by [M/H] value
     idxs = sortperm([_parse_filename(file).MH for file in files])
     files = files[idxs]
@@ -108,6 +107,7 @@ function PHOENIXYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         error("File [M/H] values not as expected -- please report.")
     end
 
+    filternames = filter_fits_colnames(colnames(FITS(first(files), "r")[2]))
     data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
@@ -261,7 +261,6 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Figure out which file we need for given [M/H]
     goodfile = files[findfirst(≈(mh), _parse_filename(file).MH for file in files)]
@@ -269,6 +268,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
+        filternames = filter_fits_colnames(colnames(f[2]))
         logg = sort(unique(read(f[2], "logg")))
         logTeff = sort(unique(read(f[2], "logTeff")))
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs
