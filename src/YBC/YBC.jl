@@ -23,8 +23,7 @@ parse for list of filter names, returned as a vector of Strings.
 """
 function filter_fits_colnames(cnames)
     result = String[]
-    for i in eachindex(cnames)
-        cn = cnames[i]
+    for cn in cnames
         if ~(cn == "logTeff" || cn == "logg" || occursin("_Av", cn))
             push!(result, cn)
         end
