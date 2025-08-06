@@ -5,14 +5,14 @@ module ATLAS9
 
 using ArgCheck: @argcheck
 using Compat: @compat
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
+using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
 
@@ -96,7 +96,6 @@ function ATLAS9YBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Sort files by [M/H] value
     idxs = sortperm([_parse_filename(file).MH for file in files])
@@ -107,6 +106,7 @@ function ATLAS9YBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     end
 
     # Read all data and pack into dense matrix
+    filternames = filter_fits_colnames(colnames(FITS(first(files), "r")[2]))
     data = Matrix{Matrix{dtype}}(undef, length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
@@ -222,7 +222,6 @@ function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstra
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Figure out which file we need for given [M/H]
     goodfile = files[findfirst(≈(mh), _parse_filename(file).MH for file in files)]
@@ -230,6 +229,7 @@ function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstra
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
+        filternames = filter_fits_colnames(colnames(f[2]))
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
         newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))

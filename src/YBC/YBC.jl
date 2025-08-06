@@ -16,7 +16,23 @@ const HardwareNumeric = without(dtype, AllHardwareNumeric)
 # Code to initialize data storage mechanisms
 include("init.jl")
 
-
+"""
+    filter_fits_colnames(cnames)
+Given a list of column names from a YBC FITS file (as returned by `FITSIO.colnames`)
+parse for list of filter names, returned as a vector of Strings.
+"""
+function filter_fits_colnames(cnames)
+    result = String[]
+    for i in eachindex(cnames)
+        cn = cnames[i]
+        if ~(cn == "logTeff" || cn == "logg" || occursin("_Av", cn))
+            push!(result, cn)
+        end
+    end
+    return result
+end
+# f(x) = filter_fits_colnames(colnames(FITS(x, "r")[2]))
+# @benchmark f($"Avodonnell94Rv3.1BT-Settl_M+0.3_a+0.0.BC.fits") → 121 μs
 
 """
     parse_filterinfo(f::AbstractString)
@@ -35,7 +51,16 @@ function parse_filterinfo(f::AbstractString)
         colnames = (:index, :file, :effective_wavelength, :width, :flux_zeropoint, :photometric_system, :detector_type, :mag_zeropoint)
         datacols = values(columns(table))[begin:end-1]
         nt = NamedTuple{colnames}(datacols)
-        return Table(nt, names = [splitext(i)[1] for i in nt.file])
+        # Parsing names from the :file entry is not consistent, so don't try
+        # names = [splitext(i)[1] for i in nt.file]
+        # # jpas has :file entries like OAJ_JPAS.J0560.dat, so we need to split twice
+        # for i in eachindex(names)
+        #     sp = splitext(names[i])
+        #     if !isempty(sp[2])
+        #         names[i] = sp[2][2:end] # first element is '.' so skip that
+        #     end
+        # end
+        return Table(nt) # , names = names)
     elseif ncnames == 10
         colnames = (:index, :names, :file, :effective_wavelength, :width, :flux_zeropoint, :photometric_system, :detector_type, :mag_zeropoint)
         datacols = values(columns(table))[begin:end-1]
