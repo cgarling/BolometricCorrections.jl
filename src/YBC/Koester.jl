@@ -5,7 +5,7 @@ module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, filter_fits_colnames
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, filter_fits_colnames
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -233,14 +233,13 @@ chemistry(::Type{<:KoesterWDYBCTable}) = missing
 # We will just use the hard-coded grid bounds; extremely fast
 Base.extrema(::Type{<:KoesterWDYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                              logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table(promote(Teff, logg)...)
-(table::KoesterWDYBCTable)(Teff::T, logg::T) where {T <: Real} = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::KoesterWDYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::KoesterWDYBCTable)(Teff::dtype, logg::dtype) = table.itp(logg, log10(Teff))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractString="YBC")
     grid, prefix = String(grid), String(prefix)
+    Av = convert(dtype, Av)
     check_prefix(prefix)
     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use KoesterWDYBCGrid for grid interpolation."
     path = pull_table(grid, prefix)
@@ -273,6 +272,7 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
 end
 
 @views function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
+    Av = convert(dtype, Av)
     check_vals(Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
@@ -290,6 +290,5 @@ end
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return KoesterWDYBCTable(Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::HardwareNumeric) = KoesterWDYBCTable(grid, convert(dtype, Av))
 
 end # module

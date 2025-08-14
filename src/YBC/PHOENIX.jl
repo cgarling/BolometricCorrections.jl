@@ -9,7 +9,7 @@ module PHOENIX
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -241,14 +241,13 @@ Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
 # We will just use the hard-coded grid bounds; extremely fast
 Base.extrema(::Type{<:PHOENIXYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                            logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table(promote(Teff, logg)...)
-(table::PHOENIXYBCTable)(Teff::T, logg::T) where {T <: Real} = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::PHOENIXYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::PHOENIXYBCTable)(Teff::Real, logg::Real) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::PHOENIXYBCTable)(Teff::dtype, logg::dtype) = table.itp(logg, log10(Teff))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
     grid, prefix = String(grid), String(prefix)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_prefix(prefix)
     @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use PHOENIXYBCGrid for grid interpolation."
     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use PHOENIXYBCGrid for grid interpolation."
@@ -282,6 +281,7 @@ function PHOENIXYBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstr
 end
 
 @views function PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::Real, Av::Real)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
@@ -323,5 +323,5 @@ end
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return PHOENIXYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-PHOENIXYBCTable(grid::PHOENIXYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = PHOENIXYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
+
 end # module
