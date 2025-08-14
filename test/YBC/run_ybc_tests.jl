@@ -3,4 +3,5 @@
     @safetestset "ATLAS9" include("atlas9_tests.jl")
     @safetestset "KoesterWD" include("koester_tests.jl")
     @safetestset "WMbasic" include("wmbasic_tests.jl")
+    @safetestset "YBC Integration Tests" include("ybc_integration_tests.jl")
 end

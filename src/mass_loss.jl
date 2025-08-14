@@ -1,11 +1,16 @@
 # Functions to calculate mass loss rates for different types of stars
 
-"""Abstract supertype for all models of stellar mass loss."""
+"""Abstract supertype for all models of stellar mass loss. New models `NewModel <: AbstractMassLoss` should implement `Mdot(m::NewModel, args...)` which should return the mass-loss rate in solar masses per year. A generic method is provided to make subtypes callable -- `(m::AbstractMassLoss)(args...) = Mdot(m, args...)`."""
 abstract type AbstractMassLoss{T} end
 (m::AbstractMassLoss)(args...) = Mdot(m, args...)
 
 """
-    Bjorklund2021MassLoss(A = -555//100, B = 79//100, C = 216//100, D = -32//100, E = 6//1, Zsol = 13//1000)
+    Bjorklund2021MassLoss(A = -555//100, 
+                          B = 79//100, 
+                          C = 216//100, 
+                          D = -32//100, 
+                          E = 6//1, 
+                          Zsol = 13//1000) <: AbstractMassLoss
 Stellar mass-loss rate model from [Bjorklund2021](@citet), specifically their Equation 20, which reads
 
 ```math

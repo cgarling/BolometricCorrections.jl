@@ -6,6 +6,7 @@ using StaticArrays: SVector
 import CSV
 import Tables
 import TypedTables: Table, columnnames, columns, getproperties
+using StatsBase: mean
 
 # exports from top-level module
 # const test = "asdf" # This is exported at the module level
@@ -34,11 +35,21 @@ without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, 
 abstract type AbstractBCGrid{T <: Real} end
 Base.eltype(::AbstractBCGrid{T}) where T = T
 """
+    gridname(::Type{<:AbstractBCGrid})
+
+Returns a human-readable `String` identifier for the provided grid; should be provided for all grid types.
+
+    gridname(grid::AbstractBCGrid) = gridname(typeof(grid))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractBCGrid`.
+"""
+gridname(grid::AbstractBCGrid) = gridname(typeof(grid))
+"""
     extrema(grid::AbstractBCGrid)
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction grids (e.g., [Fe/H], Av).
 """
-function Base.extrema(::AbstractBCGrid) end
+Base.extrema(grid::AbstractBCGrid) = extrema(typeof(grid)) # Define Base.extrema(::Type{<:Grid}) for individual `Grid` types
 """
     Table(grid::AbstractBCGrid)
 
@@ -75,21 +86,22 @@ function filternames(::AbstractBCGrid) end
 
 """ `AbstractBCTable{T <: Real}` is the abstract supertype for all bolometric correction tables with extraneous dependent variables (e.g., [Fe/H], Av) fixed -- typically only dependent variables such as `logg` and `Teff` should remain. `T` is the data type to use internally and is returned by `eltype`. Most `AbstractBCTable`s should be callable with scalar `(Teff, logg)` arguments, returning the interpolated BCs at those values. Some tables may require additional arguments `args...` such as the mass loss rate `Mdot` for the [WM-basic](@ref YBCWMbasic) tables. 
 
-    (table::AbstractTable{T})(Teff::Number, logg::Number, args...)
+    (table::AbstractTable)(Teff::Number, logg::Number, args...)
 
 Tables may also be called with a single argument (usually a `NamedTuple`) which has the necessary values stored as -- for example, `arg = (Teff = 2750, logg = 2.5)` could be passed directly to a `AbstractBCTable` without splatting.
 
-    (table::AbstractTable{T})(arg)
+    (table::AbstractTable)(arg)
 
 We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
 
-    (table::AbstractBCTable{T})([::Type{TypedTables.Table},]
-                                args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+    (table::AbstractBCTable)([::Type{TypedTables.Table},]
+                             args::Vararg{AbstractArray{<:Real}, N}) where {N}
 """
 abstract type AbstractBCTable{T <: Real} end
-Base.eltype(::AbstractBCTable{T}) where T = T
+Base.eltype(::AbstractBCTable{T}) where {T} = T
 (table::AbstractBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg))
-function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable)(args::Vararg{AbstractArray{<:Real}, N}) where {N}
+    T = eltype(table)
     @argcheck N >= 2 "Requires at least 2 input arrays (Teff, logg)."
     a1_axes = axes(first(args))
     Nelements = length(first(args))
@@ -106,8 +118,7 @@ function (table::AbstractBCTable{T})(args::Vararg{AbstractArray{<:Real}, N}) whe
         # reduce(hcat, table(Teff[i], logg[i]) for i in eachindex(Teff, logg)) 
     end
 end
-
-function (table::AbstractBCTable{T})(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {T, N}
+function (table::AbstractBCTable)(::Type{Table}, args::Vararg{AbstractArray{<:Real}, N}) where {N}
     filters = filternames(table)
     # Mostly fixed ~3--5 μs runtime cost
     return Table(Tables.table(PermutedDimsArray(table(args...), (2, 1)); header=filters))
@@ -124,11 +135,21 @@ end
 #     return DataFrame(table(Teff, logg), SVector(filters))
 # end
 """
+    gridname(::Type{<:AbstractBCTable})
+
+Returns a human-readable `String` identifier of the grid from which the provided table was derived. This should be provided for all table types.
+
+    gridname(table::AbstractBCTable) = gridname(typeof(table))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractBCTable`.
+"""
+gridname(table::AbstractBCTable) = gridname(typeof(table))
+"""
     extrema(table::AbstractBCTable)
 
 Returns a `NamedTuple` containing the bounds of the dependent variables in the bolometric correction table (e.g., `logg`, `Teff`).
 """
-Base.extrema(::AbstractBCTable)
+Base.extrema(table::AbstractBCTable) = extrema(typeof(table)) # Define Base.extrema(::Type{<:BCTable}) for individual `BCTable` types
 """
     Table(table::AbstractBCTable)
 
@@ -389,7 +410,7 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 
 #################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, filternames, zeropoints, vegamags,
+export Table, columnnames, columns, getproperties, gridname, filternames, zeropoints, vegamags,
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Include submodules
@@ -401,7 +422,7 @@ export MISTBCGrid, MISTBCTable
 include(joinpath("YBC", "YBC.jl"))
 using .YBC
 @compat public YBC
-export PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
+export YBCGrid, YBCTable, PHOENIXYBCTable, PHOENIXYBCGrid, ATLAS9YBCTable, ATLAS9YBCGrid
 
 
 end # module
