@@ -2,6 +2,7 @@ using Test: @test
 using BolometricCorrections
 using BolometricCorrections.YBC
 using BolometricCorrections.YBC: _phoenix_atlas_interp
+using StaticArrays: SVector
 
 """
     is_between(a, b, c) = (min(b, c) ≤ a ≤ max(b, c)) || (a ≈ b ≈ c)
@@ -45,8 +46,9 @@ grid = YBCGrid("acs_wfc"; extrapolate=false)
 @test_throws ArgumentError grid(0.0, 100.0)
 
 # Validate YBCTable behavior without YBCGrid extrapolation
-for mh in range(-2, 0; step=0.1)
-    for Av in range(extrema(grid).Av...; step=0.1)
+# Mixed types for mh and Av used to be incorrectly converted, so we test
+for mh in Float32.(range(-2, 0; step=0.1))
+    for Av in Float64.(range(extrema(grid).Av...; step=0.1))
         # println(mh, " ", Av)
         table = grid(mh, Av)
         @test table isa YBCTable
@@ -212,7 +214,7 @@ for mh in range(-2, 0; step=0.1)
             for logMdot in (-11.0, -6.0, -4.0)
                 Mdot = exp10(logMdot)
                 for logg in range(-2.0, 9.0; length=50)
-                    @test table(Teff, logg, Mdot) isa AbstractVector
+                    @test table(Teff, logg, Mdot) isa SVector{12, BolometricCorrections.YBC.dtype}
                 end
             end
         end

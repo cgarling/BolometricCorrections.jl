@@ -14,7 +14,7 @@ using TypedTables: Table
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
 
@@ -263,10 +263,8 @@ Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
 Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
                                            logg = (first(gridinfo.logg), last(gridinfo.logg)),
                                            Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
-(table::WMbasicYBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real} = table.itp(logg, log10(Teff), log10(Mdot))
-(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+(table::WMbasicYBCTable)(Teff::dtype, logg::dtype, Mdot::dtype) = table.itp(logg, log10(Teff), log10(Mdot))
+(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Methods to fix method ambiguities
@@ -275,6 +273,7 @@ Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
@@ -333,7 +332,6 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation(ranges, newdata; extrapolation_bc=Flat())
     return WMbasicYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-WMbasicYBCTable(grid::WMbasicYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
 
 end # module

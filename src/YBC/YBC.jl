@@ -11,7 +11,6 @@ using TypedTables: Table, columnnames, columns
 
 """YBC data are stored in FITS files with natural datatype Float32."""
 const dtype = Float32
-const HardwareNumeric = without(dtype, AllHardwareNumeric)
 
 # Code to initialize data storage mechanisms
 include("init.jl")
@@ -367,14 +366,11 @@ function (table::YBCTable)(arg)
     newarg = merge(arg, (Z = convert(dtype, Z(table)),)) # Add Z to arg for _parse_Mdot
     return table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(newarg, table.mass_loss_model))
 end
-(table::YBCTable)(Teff::Real, logg::Real) = table(Teff, logg, zero(dtype))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
-(table::YBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(promote(Teff, logg, Mdot)...)
+(table::YBCTable)(Teff::Real, logg::Real) = table(convert(dtype, Teff), convert(dtype, logg), zero(dtype))
+(table::YBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 # This method calculates the interpolation between PHOENIX and ALTAS9 for use in final method
-_phoenix_atlas_interp(table::YBCTable, Teff::Real, logg::Real) = _phoenix_atlas_interp(table, promote(Teff, logg)...)
-_phoenix_atlas_interp(table::YBCTable, Teff::HardwareNumeric, logg::HardwareNumeric) = _phoenix_atlas_interp(table, convert(dtype, Teff), convert(dtype, logg))
-function _phoenix_atlas_interp(table::YBCTable, Teff::T, logg::T) where {T <: Real}
+_phoenix_atlas_interp(table::YBCTable, Teff::Real, logg::Real) = _phoenix_atlas_interp(table, convert(dtype, Teff), convert(dtype, logg))
+function _phoenix_atlas_interp(table::YBCTable, Teff::dtype, logg::dtype)
     tables = table.tables
     transitions = table.transitions
     phoenix = transitions.phoenix # Transition region between phoenix and atlas9
@@ -386,8 +382,7 @@ function _phoenix_atlas_interp(table::YBCTable, Teff::T, logg::T) where {T <: Re
         pa_result = tables.atlas9(Teff, logg)
     end
 end
-function (table::YBCTable)(Teff::T, logg::T, Mdot::T) where {T <: Real}
-    # println(typeof.((Teff, logg, Mdot)))
+function (table::YBCTable)(Teff::dtype, logg::dtype, Mdot::dtype)
     tables = table.tables
     transitions = table.transitions
     phoenix = transitions.phoenix # Transition region between phoenix and atlas9
@@ -477,6 +472,7 @@ end
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function YBCTable(grid::YBCGrid, mh::Real, Av::Real)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     extrapolate = grid.extrapolate # Bool, whether or not to extrapolate libraries in [M/H]
     grids = grid.grids
     filters = filternames(grid)
