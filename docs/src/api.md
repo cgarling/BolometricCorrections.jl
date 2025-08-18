@@ -11,6 +11,7 @@ BolometricCorrections.surface_gravity
 ## BC Grid API
 ```@docs
 BolometricCorrections.AbstractBCGrid
+gridname(::BolometricCorrections.AbstractBCGrid)
 filternames(::BolometricCorrections.AbstractBCGrid)
 extrema(::BolometricCorrections.AbstractBCGrid)
 Table(::BolometricCorrections.AbstractBCGrid)
@@ -19,6 +20,7 @@ Table(::BolometricCorrections.AbstractBCGrid)
 ## BC Table API
 ```@docs
 BolometricCorrections.AbstractBCTable
+gridname(::BolometricCorrections.AbstractBCTable)
 filternames(::BolometricCorrections.AbstractBCTable)
 extrema(::BolometricCorrections.AbstractBCTable)
 Table(::BolometricCorrections.AbstractBCTable)
