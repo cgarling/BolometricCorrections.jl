@@ -5,14 +5,14 @@ module ATLAS9
 
 using ArgCheck: @argcheck
 using Compat: @compat
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
 
@@ -96,7 +96,6 @@ function ATLAS9YBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Sort files by [M/H] value
     idxs = sortperm([_parse_filename(file).MH for file in files])
@@ -107,6 +106,7 @@ function ATLAS9YBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     end
 
     # Read all data and pack into dense matrix
+    filternames = filter_fits_colnames(colnames(FITS(first(files), "r")[2]))
     data = Matrix{Matrix{dtype}}(undef, length(files), length(gridinfo.Av))
     for i in eachindex(files)
         file = files[i]
@@ -127,12 +127,13 @@ Base.show(io::IO, z::ATLAS9YBCGrid) = print(io, "YBC ATLAS9 bolometric correctio
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::ATLAS9YBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:ATLAS9YBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                         logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                         MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                         Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                         Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::ATLAS9YBCGrid) = grid.filters
+gridname(::Type{<:ATLAS9YBCGrid}) = "YBC-ATLAS9"
 # zeropoints(::ATLAS9YBCGrid) = zpt
 
 #########################################################
@@ -176,37 +177,37 @@ julia> ATLAS9YBCTable("acs_wfc", -2.0, 0.5) isa ATLAS9YBCTable # Can construct w
 true
 ```
 """
-struct ATLAS9YBCTable{A <: Real, B, N} <: AbstractBCTable{A}
-    MH::A
-    Av::A
-    mag_zpt::Vector{A}
+struct ATLAS9YBCTable{B, N} <: AbstractBCTable{dtype}
+    MH::dtype
+    Av::dtype
+    mag_zpt::Vector{dtype}
     systems::Vector{String}
     name::String
     itp::B     # Interpolator object
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 function ATLAS9YBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp, filters)
-    T = dtype # promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
-    return ATLAS9YBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
+    return ATLAS9YBCTable(convert(dtype, MH), convert(dtype, Av), convert(Vector{dtype}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
 Base.show(io::IO, z::ATLAS9YBCTable) = print(io, "YBC ATLAS9 bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::ATLAS9YBCTable) = table.filters
+gridname(::Type{<:ATLAS9YBCTable}) = "YBC-ATLAS9"
 # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
 MH(t::ATLAS9YBCTable) = t.MH
 Z(t::ATLAS9YBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::ATLAS9YBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::ATLAS9YBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::ATLAS9YBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
+Base.extrema(::Type{<:ATLAS9YBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)))
+(table::ATLAS9YBCTable)(Teff::Real, logg::Real) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::ATLAS9YBCTable)(Teff::dtype, logg::dtype) = table.itp(logg, log10(Teff))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::AbstractString="YBC")
     grid, prefix = String(grid), String(prefix)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_prefix(prefix)
     @argcheck mapreduce(isapprox(mh), |, gridinfo.MH) "Provided [M/H] $mh not in available values $(gridinfo.MH); use ATLAS9YBCGrid for grid interpolation."
     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use ATLAS9YBCGrid for grid interpolation."
@@ -219,7 +220,6 @@ function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstra
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Figure out which file we need for given [M/H]
     goodfile = files[findfirst(≈(mh), _parse_filename(file).MH for file in files)]
@@ -227,6 +227,7 @@ function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstra
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
+        filternames = filter_fits_colnames(colnames(f[2]))
         data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
         # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
         newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
@@ -236,6 +237,7 @@ function ATLAS9YBCTable(grid::AbstractString, mh::Real, Av::Real; prefix::Abstra
 end
 
 function ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
@@ -277,7 +279,6 @@ function ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return ATLAS9YBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-ATLAS9YBCTable(grid::ATLAS9YBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = ATLAS9YBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
 
 ##############################

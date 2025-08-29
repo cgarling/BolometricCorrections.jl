@@ -7,7 +7,7 @@ module MIST
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
                                interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                Y, Y_phot, Z, Z_phot, MH, chemistry
+                                Y, Y_phot, Z, Z_phot, MH, chemistry, gridname
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -313,12 +313,18 @@ Table(grid::MISTBCGrid) = grid.table
 # columns(grid::MISTBCGrid) = columns(Table(grid))
 # getproperties(grid::MISTBCGrid, names::Tuple{Vararg{Symbol}}) = getproperties(Table(grid), names) 
 # A function that will extract the dependent variables from a MIST BC grid
-extract_dependents(grid::MISTBCGrid) = getproperties(grid, _mist_dependents)
-function Base.extrema(grid::MISTBCGrid)
-    return NamedTuple{_mist_dependents}(extrema(col) for col in columns(extract_dependents(grid)))
-end
+# extract_dependents(grid::MISTBCGrid) = getproperties(grid, _mist_dependents)
+# function Base.extrema(grid::Type{<:MISTBCGrid})
+#     return NamedTuple{_mist_dependents}(extrema(col) for col in columns(extract_dependents(grid)))
+# end
+Base.extrema(::Type{<:MISTBCGrid}) = (Teff = (first(gridinfo.Teff), last(gridinfo.Teff)), 
+                                      logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                      feh = (first(gridinfo.feh), last(gridinfo.feh)),
+                                      Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                      Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 # filternames(grid::MISTBCGrid) = [string(name) for name in columnnames(grid)[6:end]]
 filternames(grid::MISTBCGrid) = columnnames(grid)[length(_mist_dependents)+1:end]
+gridname(::Type{<:MISTBCGrid}) = "MIST"
 zeropoints(::MISTBCGrid) = zpt
 
 
@@ -334,10 +340,13 @@ MISTBCTable(feh::Real, Av::Real, itp, filters) = MISTBCTable(promote(feh, Av)...
 Base.show(io::IO, z::MISTBCTable) = print(io, "MIST bolometric correction table with [Fe/H] ",
                                           z.feh, " and V-band extinction ", z.Av)
 filternames(table::MISTBCTable) = table.filters
+gridname(::Type{<:MISTBCTable}) = "MIST"
 zeropoints(::MISTBCTable) = zpt
 # Interpolations uses `bounds` to return interpolation domain
 # Could also just query _mist_Teff and _mist_logg
-Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.itp.knots[2]), logg = extrema(table.itp.itp.knots[1]))
+# Base.extrema(table::MISTBCTable) = (Teff = extrema(table.itp.itp.knots[2]), logg = extrema(table.itp.itp.knots[1]))
+Base.extrema(::Type{<:MISTBCTable}) = (Teff = (first(gridinfo.Teff), last(gridinfo.Teff)), 
+                                       logg = (first(gridinfo.logg), last(gridinfo.logg)))
 MH(t::MISTBCTable) = t.feh
 Z(t::MISTBCTable) = Z(chemistry(t), MH(t))
 

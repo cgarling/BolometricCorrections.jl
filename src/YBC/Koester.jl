@@ -4,12 +4,12 @@ YBC submodule exposing the bolometric corrections computed by the YBC team based
 module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
-import ...BolometricCorrections: zeropoints, filternames, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, filter_fits_colnames
 
 using ArgCheck: @argcheck
 using Compat: @compat
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
@@ -69,7 +69,7 @@ that have fixed dependent grid variables (Av). This can be done either by callin
 Note that there is no variation with metallicity
 for this grid as it is specialized for white dwarfs only.
 
-```jldoctest
+```jldoctest koester
 julia> using BolometricCorrections.YBC.KoesterWD: KoesterWDYBCGrid
 
 julia> grid = KoesterWDYBCGrid("acs_wfc")
@@ -78,16 +78,24 @@ YBC Koester white dwarf bolometric correction grid for photometric system YBC/ac
 julia> grid(0.11) # Can be called to construct table with interpolated Av
 YBC Koester white dwarf bolometric correction table with for system YBC/acs_wfc with V-band extinction 0.11
 ```
+
+As most subtypes of `AbstractBCGrid` accept two arguments `grid(MH, Av)`, we allow
+this call signature as well, but the `MH` argument is effectively ignored.
+
+```jldoctest koester
+julia> grid(-1, 0.11)
+YBC Koester white dwarf bolometric correction table with for system YBC/acs_wfc with V-band extinction 0.11
+```
 """
 struct KoesterWDYBCGrid{A <: Number, C <: AbstractVector{A}, N} <: AbstractBCGrid{A}
-    data::Vector{Matrix{A}} # A should be Float32
+    data::Array{A, 4} # A should be Float32
     mag_zpt::C
     systems::Vector{String}
     name::String
     filters::Tuple{Vararg{Symbol, N}} # NTuple{N, Symbol} giving filter names
 end
 
-function KoesterWDYBCGrid(data::Vector{Matrix{A}}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
+function KoesterWDYBCGrid(data::Array{A, 4}, mag_zpt::AbstractArray{<:Number}, systems, name, filternames) where {A}
     return KoesterWDYBCGrid(data, convert.(A, mag_zpt), String.(systems), String(name), tuple(Symbol.(filternames)...))
 end
 
@@ -102,33 +110,65 @@ function KoesterWDYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
-    # Koester WD only has one file
+    # Koester WD only has one file -- no [M/H] dependence
     file = first(files)
-    # Read all data and pack into dense matrix
-    data = Vector{Matrix{dtype}}(undef, length(gridinfo.Av))
+    filternames = filter_fits_colnames(colnames(FITS(first(files), "r")[2]))
+    data = zeros(dtype, length(gridinfo.logg), length(gridinfo.logTeff), length(filternames), length(gridinfo.Av))
     FITS(file, "r") do f
+        # Need to figure out how much of the logg, logTeff grid this data covers
+        # Not all filter systems have the same logg, logTeff grid unfortunately
+        u_logg = sort(unique(read(f[2], "logg")))
+        u_logTeff = sort(unique(read(f[2], "logTeff")))
+        lg_1, lg_2 = searchsortedfirst(gridinfo.logg, first(u_logg)), searchsortedfirst(gridinfo.logg, last(u_logg))
+        lt_1, lt_2 = searchsortedfirst(gridinfo.logTeff, first(u_logTeff)), searchsortedfirst(gridinfo.logTeff, last(u_logTeff))
         for i in eachindex(gridinfo.Av)
             Av = gridinfo.Av[i]
             # Figure out FITS file column name for given Av
             Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(Av)
-            data[i] = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
+            for k in eachindex(filternames)
+                tmpdata = read(f[2], String(filternames[k])*Av_prefix)
+                data[lg_1:lg_2, lt_1:lt_2, k, i] .= reshape(tmpdata, length(u_logg), length(u_logTeff))
+            end
+        end
+        # Extrapolate matrix if data does not cover full gridinfo range
+        if lg_1 != 1
+            for k in 1:lg_1
+                data[k, :, :, :] .= @view(data[lg_1, :, :, :])
+            end
+        end
+        if lg_2 != lastindex(gridinfo.logg)
+            for k in lg_2:lastindex(gridinfo.logg)
+                data[k, :, :, :] .= @view(data[lg_2, :, :, :])
+            end
+        end
+        if lt_1 != 1
+            for k in 1:lt_1
+                data[:, k, :, :] .= @view(data[:, lt_1, :, :])
+            end
+        end
+        if lt_2 != lastindex(gridinfo.logTeff)
+            for k in lt_2:lastindex(gridinfo.logTeff)
+                data[:, k, :, :] .= @view(data[:, lt_2, :, :])
+            end
         end
     end
+
     return KoesterWDYBCGrid(data, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, filternames)
 end
+(grid::KoesterWDYBCGrid)(mh::Real, Av::Real) = KoesterWDYBCTable(grid, Av) # mh is irrelevant
 (grid::KoesterWDYBCGrid)(Av::Real) = KoesterWDYBCTable(grid, Av)
 Base.show(io::IO, z::KoesterWDYBCGrid) = print(io, "YBC Koester white dwarf bolometric correction grid for photometric system $(z.name).")
 # function Table(grid::KoesterWDYBCGrid)
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))
 # end
-Base.extrema(::KoesterWDYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                    logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                    Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                    Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+Base.extrema(::Type{<:KoesterWDYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                            logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                            Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                            Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::KoesterWDYBCGrid) = grid.filters
+gridname(::Type{<:KoesterWDYBCGrid}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCGrid}) = missing
 # zeropoints(::KoesterWDYBCGrid) = zpt
 
@@ -185,20 +225,21 @@ function KoesterWDYBCTable(Av::Real, mag_zpt::Vector{<:Real}, systems, name, itp
 end
 Base.show(io::IO, z::KoesterWDYBCTable) = print(io, "YBC Koester white dwarf bolometric correction table with for system $(z.name) with V-band extinction ", z.Av)
 filternames(table::KoesterWDYBCTable) = table.filters
+gridname(::Type{<:KoesterWDYBCTable}) = "YBC-Koester"
 chemistry(::Type{<:KoesterWDYBCTable}) = missing
 # zeropoints(table::KoesterWDYBCTable) = table.mag_zpt
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::KoesterWDYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                     logg = (first(gridinfo.logg), last(gridinfo.logg)))
-(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::KoesterWDYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg))
+Base.extrema(::Type{<:KoesterWDYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                             logg = (first(gridinfo.logg), last(gridinfo.logg)))
+(table::KoesterWDYBCTable)(Teff::Real, logg::Real) = table(convert(dtype, Teff), convert(dtype, logg))
+(table::KoesterWDYBCTable)(Teff::dtype, logg::dtype) = table.itp(logg, log10(Teff))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractString="YBC")
     grid, prefix = String(grid), String(prefix)
+    Av = convert(dtype, Av)
     check_prefix(prefix)
     @argcheck mapreduce(isapprox(Av), |, gridinfo.Av) "Provided Av $Av not in available values $(gridinfo.Av); use KoesterWDYBCGrid for grid interpolation."
     path = pull_table(grid, prefix)
@@ -210,7 +251,6 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
         Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
     end
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Koester WD only has one file
     goodfile = first(files)
@@ -218,32 +258,37 @@ function KoesterWDYBCTable(grid::AbstractString, Av::Real; prefix::AbstractStrin
     Av_prefix = isapprox(0, Av) ? "" : "_Av" * string(gridinfo.Av[findfirst(≈(Av), gridinfo.Av)])
     # Access FITS file
     FITS(goodfile, "r") do f
-        data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames)
-        # Pack data into (length(logg), length(logTeff)) Matrix{SVector} for interpolation
-        newdata = repack_submatrix(data, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filternames)))
-        itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Throw())
+        filternames = filter_fits_colnames(colnames(f[2]))
+        logg = sort(unique(read(f[2], "logg")))
+        logTeff = sort(unique(read(f[2], "logTeff")))
+        data = reduce(hcat, read(f[2], String(filt)*Av_prefix) for filt in filternames) # ← 900μs ↑ 354.021 μs ↓ 160 μs
+        newdata = repack_submatrix(reshape(data, length(logg), length(logTeff), length(filternames)), Val(length(filternames)))
+        # interpolation requires range objects, so we index into the gridinfo entries
+        knots = (gridinfo.logg[searchsortedfirst(gridinfo.logg, logg[1]):searchsortedfirst(gridinfo.logg, logg[end])],
+                 gridinfo.logTeff[searchsortedfirst(gridinfo.logTeff, logTeff[1]):searchsortedfirst(gridinfo.logTeff, logTeff[end])])
+        itp = cubic_spline_interpolation(knots, newdata; extrapolation_bc=Flat())
         return KoesterWDYBCTable(Av, filterinfo.mag_zeropoint, String.(filterinfo.photometric_system), prefix*"/"*grid, itp, tuple(Symbol.(filternames)...))
     end
 end
 
-function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
+@views function KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::Real)
+    Av = convert(dtype, Av)
     check_vals(Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
     Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     if Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
-        submatrix = data[searchsortedfirst(Av_vec, Av)]
+        submatrix = data[:, :, :, searchsortedfirst(Av_vec, Av)]
     else
         Av_idx = searchsortedfirst(Av_vec, Av) - 1
-        mat1 = data[Av_idx]
-        mat2 = data[Av_idx + 1]
-        submatrix = interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], mat1, mat2)       
+        mat1 = data[:, :, :, Av_idx]
+        mat2 = data[:, :, :, Av_idx + 1]
+        submatrix = interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], mat1, mat2)
     end
-    newdata = repack_submatrix(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), Val(length(filters)))
+    newdata = repack_submatrix(submatrix, Val(length(filters)))
     itp = cubic_spline_interpolation((gridinfo.logg, gridinfo.logTeff), newdata; extrapolation_bc=Flat())
     return KoesterWDYBCTable(Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-KoesterWDYBCTable(grid::KoesterWDYBCGrid, Av::HardwareNumeric) = KoesterWDYBCTable(grid, convert(dtype, Av))
 
 end # module

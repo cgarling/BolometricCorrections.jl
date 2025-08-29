@@ -5,15 +5,16 @@ module WMbasic
 
 using ArgCheck: @argcheck
 using Compat: @compat, logrange, stack
-using FITSIO: FITS
+using FITSIO: FITS, colnames
 using Interpolations: cubic_spline_interpolation, Throw, Flat
 using Printf: @sprintf
 using StaticArrays: SVector
+using TypedTables: Table
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
-using ..YBC: HardwareNumeric, dtype, pull_table, parse_filterinfo, check_prefix, check_vals, PARSECChemistry
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
+using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
 
@@ -24,7 +25,8 @@ const _Av = (0, 0.5, 1, 2, 5, 10, 20) # Mix of float and integer makes parsing F
 """ Unique values of metal mass fraction Z for the WM-basic models. """
 const _Z = dtype[0.0001, 0.0005, 0.001, 0.004, 0.008, 0.02]
 """Unique values of mass loss range in solar masses per year."""
-const _Mdot = logrange(convert(dtype, 1e-7), convert(dtype, 1e-5), 3) # dtype[1e-5, 1e-6, 1e-7]
+# const _Mdot = logrange(convert(dtype, 1e-7), convert(dtype, 1e-5), 3) # dtype[1e-5, 1e-6, 1e-7]
+const _Mdot = dtype[1e-7, 1e-6, 1e-5]
 const _logTeff = range(convert(dtype, 4.3), convert(dtype, 5.0); step=convert(dtype, 0.025))
 const _logg = range(convert(dtype, 2.5), convert(dtype, 6.0); step=convert(dtype, 0.5))
 # Mdot = 1.0e-5 only goes to logg = 5.5, not 6.0
@@ -57,6 +59,13 @@ function _parse_filename(f::AbstractString)
     Mdot = exp10(-1 * parse(dtype, split(split(f, "Mdot")[2], ".BC")[1]))
     return (Z = Z, Mdot = Mdot)
 end
+
+"""
+    _wmbasic_filename(Z, Mdot)
+Given the value of Z and Mdot, returns the filename of the corresponding WMbasic file (example: "Avodonnell94Rv3.1WM_Z0.0001Mdot5.BC.fits").
+"""
+_wmbasic_filename(Z, Mdot) = "Avodonnell94Rv3.1WM_Z" * string(Z) * "Mdot" * @sprintf("%1i", log10(Mdot))[2] * ".BC.fits"
+
 
 #########################################################
 
@@ -95,15 +104,15 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
     check_prefix(prefix)
     path = pull_table(String(grid), String(prefix))
     filterinfo = parse_filterinfo(joinpath(path, "filter.info"))
-    filternames = filterinfo.names
 
     # Read all data and pack into dense matrix
+    filternames = filter_fits_colnames(colnames(FITS(joinpath(path, "regrid", _wmbasic_filename(first(gridinfo.Z), first(gridinfo.Mdot))), "r")[2]))
     data = Array{Matrix{dtype}, 3}(undef, length(gridinfo.Z), length(gridinfo.Mdot), length(gridinfo.Av))
     for i in eachindex(gridinfo.Z)
         z = gridinfo.Z[i]
         for j in eachindex(gridinfo.Mdot)
             mdot = gridinfo.Mdot[j]
-            file = joinpath(path, "regrid", "Avodonnell94Rv3.1WM_Z" * string(z) * "Mdot" * @sprintf("%1i", log10(mdot))[2] * ".BC.fits")
+            file = joinpath(path, "regrid", _wmbasic_filename(z, mdot))
             if !isfile(file)
                 error("YBC WM-basic file $file missing. Data may be corrupted. Recommend purging data with `BolometricCorrections.YBC.remove_table($grid; prefix = $prefix)` and rerunning.")
             end
@@ -161,18 +170,19 @@ function WMbasicYBCGrid(grid::AbstractString; prefix::AbstractString="YBC")
 end
 (grid::WMbasicYBCGrid)(mh::Real, Av::Real) = WMbasicYBCTable(grid, mh, Av)
 Base.show(io::IO, z::WMbasicYBCGrid) = print(io, "YBC WM-basic bolometric correction grid for photometric system $(z.name).")
-# # function Table(grid::WMbasicYBCGrid)
-# #     data = grid.data
-# #     tables = Vector{Table}(undef, length(data))
-# # end
-Base.extrema(::WMbasicYBCGrid) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                  logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                  MH = (first(gridinfo.MH), last(gridinfo.MH)),
-                                  Z = (first(gridinfo.Z), last(gridinfo.Z)), 
-                                  Av = (first(gridinfo.Av), last(gridinfo.Av)),
-                                  Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
-                                  Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
+# function Table(grid::WMbasicYBCGrid)
+#     data = grid.data
+#     tables = Vector{Table}(undef, length(data))
+# end
+Base.extrema(::Type{<:WMbasicYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                          logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                          MH = (first(gridinfo.MH), last(gridinfo.MH)),
+                                          Z = (first(gridinfo.Z), last(gridinfo.Z)), 
+                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
+                                          Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
+                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
+gridname(::Type{<:WMbasicYBCGrid}) = "YBC-WMbasic"
 # zeropoints(::WMbasicYBCGrid) = zpt
 chemistry(::Type{<:WMbasicYBCGrid}) = PARSECChemistry()
 
@@ -242,6 +252,7 @@ end
 Base.show(io::IO, z::WMbasicYBCTable) = print(io, "YBC WM-basic bolometric correction table for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::WMbasicYBCTable) = table.filters
+gridname(::Type{<:WMbasicYBCTable}) = "YBC-WMbasic"
 # zeropoints(table::WMbasicYBCTable) = table.mag_zpt
 chemistry(::Type{<:WMbasicYBCTable}) = PARSECChemistry()
 MH(t::WMbasicYBCTable) = t.MH
@@ -249,17 +260,20 @@ Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
-Base.extrema(::WMbasicYBCTable) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
-                                   logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                   Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
-(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table.itp(logg, log10(Teff), log10(Mdot))
+Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)), exp10(last(gridinfo.logTeff))), 
+                                           logg = (first(gridinfo.logg), last(gridinfo.logg)),
+                                           Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)))
+(table::WMbasicYBCTable)(Teff::dtype, logg::dtype, Mdot::dtype) = table.itp(logg, log10(Teff), log10(Mdot))
+(table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
 (table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
-# Data are naturally Float32 -- convert hardware numeric args for faster evaluation and guarantee Float32 output
-(table::WMbasicYBCTable)(Teff::HardwareNumeric, logg::HardwareNumeric, Mdot::HardwareNumeric) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
+# Methods to fix method ambiguities
+(::WMbasicYBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
+(::WMbasicYBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 # to broadcast over both teff and logg, you do table.(teff, logg')
 
 function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
+    mh, Av = convert(dtype, mh), convert(dtype, Av)
     check_vals(mh, Av, gridinfo)
     filters = filternames(grid)
     data = grid.data
@@ -267,22 +281,33 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     Av_vec = SVector{length(gridinfo.Av), dtype}(gridinfo.Av) # Need vector to use searchsortedfirst
     MH_vec = gridinfo.MH
 
+    submatrix = Array{dtype, 3}(undef, size(data[1])..., 3)
     if mh ∈ gridinfo.MH && Av ∈ gridinfo.Av
         # Exact values are in grid; no interpolation necessary
-        submatrix = data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)]
+        # submatrix = stack(data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)])
+        vecmat = data[searchsortedfirst(MH_vec, mh), :, searchsortedfirst(Av_vec, Av)]
+        for i in eachindex(vecmat)
+            submatrix[:, :, i] .= vecmat[i]
+        end
     else
         if mh ∈ gridinfo.MH
             MH_idx = searchsortedfirst(MH_vec, mh)
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             vecmat1 = data[MH_idx, :, Av_idx] # Vector{Matrix} of length gridinfo.Mdot
             vecmat2 = data[MH_idx, :, Av_idx + 1]
-            submatrix = stack(interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            # submatrix = stack(interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            for i in eachindex(vecmat1, vecmat2)
+                submatrix[:, :, i] .= interp1d(Av, Av_vec[Av_idx], Av_vec[Av_idx + 1], vecmat1[i], vecmat2[i])
+            end
         elseif Av ∈ gridinfo.Av
             Av_idx = searchsortedfirst(Av_vec, Av)
             MH_idx = searchsortedfirst(MH_vec, mh) - 1
             vecmat1 = data[MH_idx, :, Av_idx]
             vecmat2 = data[MH_idx + 1, :, Av_idx]
-            submatrix = stack(interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            # submatrix = stack(interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i]) for i in eachindex(vecmat1, vecmat2))
+            for i in eachindex(vecmat1, vecmat2)
+                submatrix[:, :, i] .= interp1d(mh, MH_vec[MH_idx], MH_vec[MH_idx + 1], vecmat1[i], vecmat2[i])
+            end
         else
             Av_idx = searchsortedfirst(Av_vec, Av) - 1
             Av1, Av2 = Av_vec[Av_idx], Av_vec[Av_idx + 1]
@@ -294,7 +319,10 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             vecmat1_2 = data[MH_idx, :, Av_idx + 1]
             vecmat2_2 = data[MH_idx + 1, :, Av_idx + 1]
             # Perform bilinear interpolation
-            submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
+            # submatrix = stack(interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i]) for i in eachindex(vecmat1_1))
+            for i in eachindex(vecmat1_1)
+                submatrix[:, :, i] .= interp2d(mh, Av, mh1, mh2, Av1, Av2, vecmat1_1[i], vecmat2_1[i], vecmat1_2[i], vecmat2_2[i])
+            end
         end
     end
     submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
@@ -304,7 +332,6 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
     itp = cubic_spline_interpolation(ranges, newdata; extrapolation_bc=Flat())
     return WMbasicYBCTable(mh, Av, grid.mag_zpt, grid.systems, grid.name, itp, filters)
 end
-WMbasicYBCTable(grid::WMbasicYBCGrid, mh::HardwareNumeric, Av::HardwareNumeric) = WMbasicYBCTable(grid, convert(dtype, mh), convert(dtype, Av))
 
 
 end # module
