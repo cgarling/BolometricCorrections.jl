@@ -243,23 +243,22 @@ function MISTBCGrid(grid::AbstractString)
         find_func = Base.Fix2(occursin, grid)
         if find_func("jwst") # Only contains NIRCam looks like
             fname = mist_processed_fname(datadep"MIST_JWST")
-            # Cover multiple HST instruments gracefully
+        # Cover multiple HST instruments gracefully
+        elseif find_func("wfpc2")
+            fname = mist_processed_fname(datadep"MIST_HST_WFPC2")
+        elseif find_func("wfc3")
+            fname = mist_processed_fname(datadep"MIST_HST_WFC3")
+        elseif mapreduce(find_func, &, ("acs", "hrc"))
+            fname = mist_processed_fname(datadep"MIST_HST_ACS_HRC")
+        elseif mapreduce(find_func, &, ("acs", "wfc"))
+            fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
         elseif find_func("hst")
-            if find_func("wfpc2")
-                fname = mist_processed_fname(datadep"MIST_HST_WFPC2")
-            elseif find_func("wfc3")
-                fname = mist_processed_fname(datadep"MIST_HST_WFC3")
-            elseif mapreduce(find_func, &, ("acs", "hrc"))
-                fname = mist_processed_fname(datadep"MIST_HST_ACS_HRC")
-            elseif mapreduce(find_func, &, ("acs", "wfc"))
-                fname = mist_processed_fname(datadep"MIST_HST_ACS_WFC")
-            else # Name not fully specified, error
-                throw(ArgumentError("""Requested grid "$grid" unclear.
-                                   Supported HST bolometric correction grids are "hst_acs_wfc" for the \
-                                   ACS Wide Field Channel, "hst_acs_hrc" for the ACS High-Resolution \
-                                   Channel, "hst_wfpc2" for the Wide Field and Planetary Camera 2, \
-                                   and "hst_wfc3" for the Wide Field Camera 3."""))
-            end
+            # Name not fully specified, error
+            throw(ArgumentError("""Requested grid "$grid" unclear.
+                                Supported HST bolometric correction grids are "acs_wfc" for the \
+                                ACS Wide Field Channel, "acs_hrc" for the ACS High-Resolution \
+                                Channel, "wfpc2" for the Wide Field and Planetary Camera 2, \
+                                and "wfc3" for the Wide Field Camera 3."""))
         elseif find_func("lsst")
             fname = mist_processed_fname(datadep"MIST_LSST")
         elseif find_func("wise")
