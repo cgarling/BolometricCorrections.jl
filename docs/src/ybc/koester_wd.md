@@ -16,7 +16,7 @@ Details on the BC calculations are given in section 3.6 of [Chen2019](@citet). A
 
 ```@example
 using BolometricCorrections # hide
-using BolometricCorrections: KoesterWDYBCGrid # hide
+using BolometricCorrections.YBC.KoesterWD: KoesterWDYBCGrid # hide
 include(joinpath(@__DIR__, "..", "plots.jl")) # hide
 grid = KoesterWDYBCGrid("jwst_nircam_wide") # hide
 Teff = logrange(exp10(3.7), 10_000; length=1000) # hide
