@@ -13,19 +13,23 @@ const sparse_checkout_list = Vector{String}()
 const systems = Vector{String}()
 
 function __init__()
-    global scratch_dir = @get_scratch!("YBC") # This will create the YBC dir
-    global ybc_path = _ybc_path(scratch_dir)
-    for i in ("iYBC", "rYBC", "YBC")
-        # mkdir errors if dir exists, mkpath does not
-        mkpath(joinpath(ybc_path, i))
-    end
-    # Read the Git sparse checkout list and write contents into sparse_checkout_list
-    for f in split(readchomp(`$(git()) -C $ybc_path sparse-checkout list`), "\n")
-        push!(sparse_checkout_list, f)
-    end
-    # Read subdirectories of ybc_tables/YBC and write into systems
-    for f in split(readchomp(`$(git()) -C $(joinpath(ybc_path, "YBC")) ls-tree -d master --name-only`), "\n") # $(joinpath(repo, prefix))
-        push!(systems, f)
+    try
+        global scratch_dir = @get_scratch!("YBC") # This will create the YBC dir
+        global ybc_path = _ybc_path(scratch_dir)
+        for i in ("iYBC", "rYBC", "YBC")
+            # mkdir errors if dir exists, mkpath does not
+            mkpath(joinpath(ybc_path, i))
+        end
+        # Read the Git sparse checkout list and write contents into sparse_checkout_list
+        for f in split(readchomp(`$(git()) -C $ybc_path sparse-checkout list`), "\n")
+            push!(sparse_checkout_list, f)
+        end
+        # Read subdirectories of ybc_tables/YBC and write into systems
+        for f in split(readchomp(`$(git()) -C $(joinpath(ybc_path, "YBC")) ls-tree -d master --name-only`), "\n") # $(joinpath(repo, prefix))
+            push!(systems, f)
+        end
+    catch e
+        @warn """Failed to initialize YBC data repository. The YBC module will not be functional. Full error trace: $e"""
     end
 end
 
@@ -67,7 +71,15 @@ function _ybc_path(path::String = scratch_dir)
     return full_path
 end
 
+function _check_ybc_path(path::String)
+    if isempty(path)
+        error("YBC data is not available. The YBC repository could not be initialized. See warning message from module initialization.")
+    end
+    return nothing
+end
+
 function update_tables(path::String = ybc_path)
+    _check_ybc_path(path)
     run(`$(git()) -C $path fetch origin`)
     run(`$(git()) -C $path pull origin master`)
     return nothing
@@ -84,6 +96,7 @@ function pull_table(f::AbstractString, prefix::AbstractString = "YBC")
     f = String(f)
     prefix = String(prefix)
     # Get path to repo
+    _check_ybc_path(ybc_path)
     repo = ybc_path
     # Check that prefix is valid
     check_prefix(prefix)
@@ -114,6 +127,7 @@ function remove_table(f::AbstractString, prefix::AbstractString = "YBC")
     # Remove invalid system from sparse-checkout list
     # To do this need to `set` with list that does not include invalid entry
     # run(`$(git()) -C $repo sparse-checkout rm $(prefix * "/" * f)`)
+    _check_ybc_path(ybc_path)
     repo = ybc_path
     name = joinpath(prefix, f)
     # installed = split(readchomp(`$(git()) -C $repo sparse-checkout list`), "\n")
