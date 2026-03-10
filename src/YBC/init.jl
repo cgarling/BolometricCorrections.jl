@@ -1,7 +1,7 @@
 using Git: git
 using Scratch: @get_scratch!
 
-const ybc_url = "https://gitlab.com/cycyustc/ybc_tables.git"
+const ybc_url = "https://gitlab.com/parsec-group/public_repos/YBC_tables.git"
 # Looks like raw spectra might be hosted here
 # https://gitlab.com/cycyustc/spec_ybc
 
@@ -139,4 +139,3 @@ function remove_table(f::AbstractString, prefix::AbstractString = "YBC")
     deleteat!(sparse_checkout_list, idxs)
     return nothing
 end
-
