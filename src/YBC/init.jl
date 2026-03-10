@@ -64,6 +64,8 @@ function _ybc_path(path::String = scratch_dir)
             run(`$(git()) -C $full_path remote set-url origin $ybc_url`)
             run(`$(git()) -C $full_path lfs install --local`)
             run(`$(git()) -C $full_path fetch origin`)
+            run(`$(git()) -C $full_path reset --hard origin/master`)
+            update_tables(full_path)
             @info "YBC repository update complete."
         end
     catch
