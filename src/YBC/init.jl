@@ -53,7 +53,7 @@ function _ybc_path(path::String = scratch_dir)
     try
         # Check for existence of old installation and move if found
         if isdir(joinpath(path, "ybc_tables"))
-             @info """The repository name for the YBC bolometric corrections repository has changed and your installation needs the be updated. Reinitializing now."""
+             @info """The repository name for the YBC bolometric corrections repository has changed and your installation needs to be updated. Reinitializing now."""
              mv(joinpath(path, "ybc_tables"), full_path; force=true)
         end
 
