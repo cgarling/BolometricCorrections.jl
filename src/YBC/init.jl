@@ -1,7 +1,7 @@
 using Git: git
 using Scratch: @get_scratch!
 
-const ybc_url = "https://gitlab.com/cycyustc/ybc_tables.git"
+const ybc_url = "https://gitlab.com/parsec-group/public_repos/YBC_tables.git"
 # Looks like raw spectra might be hosted here
 # https://gitlab.com/cycyustc/spec_ybc
 
@@ -39,34 +39,50 @@ end
 Ensure that `path` is initialized properly to contain the YBC git repository. Returns path to the directory containing the initialized YBC Git repository.
 """
 function _ybc_path(path::String = scratch_dir)
-    # Path where git repo will be after checkout
-    full_path = joinpath(path, "ybc_tables")
-    # Check if directory is already initialized -- if so, check that 
-    # correct repo is checked out
-    # We can use git -C <path> to perform operations in other directories, 
-    # rather than changing directories.
-    try
+    function git_url(path)
         # First check that path is in a git tree
-        cmd = `$(git()) -C $full_path rev-parse --is-inside-work-tree`
+        cmd = `$(git()) -C $path rev-parse --is-inside-work-tree`
         run(pipeline(cmd; stdout=devnull, stderr=devnull))
         # Now check that it is reflecting the correct directory
-        url = readchomp(`$(git()) -C $full_path remote get-url origin`)
+        url = readchomp(`$(git()) -C $path remote get-url origin`)
+        return url
+    end
+    # Path where git repo will be after checkout
+    full_path = joinpath(path, "YBC_tables") # This is what the repo is called after URL migration (2026-03-10)
+    # Check if directory is already initialized -- if so, check that correct repo is checked out
+    try
+        # Check for existence of old installation and move if found
+        if isdir(joinpath(path, "ybc_tables"))
+
+            @info """The repository name for the YBC bolometric corrections repository has changed and your installation needs to be updated. Reinitializing now."""
+            # Use a temporary directory to handle case-insensitive file systems for which we can't mv from ybc_tables to YBC_tables directly
+            temp_path = joinpath(path, "temp_ybc_tables")
+            mv(joinpath(path, "ybc_tables"), temp_path; force=true)
+            mv(temp_path, full_path; force=true)
+        end
+
+        # First check that path is in a git tree
+        url = git_url(full_path)
         if url != ybc_url
-            # # If wrong directory checked out, delete .git configuration
-            # rm(joinpath(path, ".git"))
-            error("Wrong repository $url checked out in YBC scratch directory $path; expected url $ybc_url. If $path is an acceptable place to store the YBC files, please remove its `.git` subdirectory to enable a fresh clone.")
+            @info """Wrong repository $url checked out in YBC scratch directory $path; expected url $ybc_url. Updating local clone to correct URL."""
+            run(`$(git()) -C $full_path remote set-url origin $ybc_url`)
+            run(`$(git()) -C $full_path lfs install --local`)
+            run(`$(git()) -C $full_path fetch origin`)
+            run(`$(git()) -C $full_path reset --hard origin/master`)
+            update_tables(full_path)
+            @info "YBC repository update complete."
         end
     catch
         # Clone repo skipping file contents (--filter=blob:none) and not checking out
         @info "Initializing YBC repository in $path"
         run(`$(git()) -C $path clone --filter=blob:none --no-checkout $ybc_url`)
-        run(`$(git()) -C $(joinpath(path, "ybc_tables")) lfs install --local`)
+        run(`$(git()) -C $full_path lfs install --local`)
 
         # Perform a sparse checkout (only `add`ed files will be checked out),
         # interpreting sparse paths as entire directories, rather than complex patterns (--cone)
-        run(`$(git()) -C $(joinpath(path, "ybc_tables")) sparse-checkout init --cone`)
+        run(`$(git()) -C $full_path sparse-checkout init --cone`)
         # Now checkout
-        run(`$(git()) -C $(joinpath(path, "ybc_tables")) checkout master`)
+        run(`$(git()) -C $full_path checkout master`)
     end
     return full_path
 end
@@ -139,4 +155,3 @@ function remove_table(f::AbstractString, prefix::AbstractString = "YBC")
     deleteat!(sparse_checkout_list, idxs)
     return nothing
 end
-
