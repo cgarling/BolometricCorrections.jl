@@ -52,7 +52,7 @@ function _ybc_path(path::String = scratch_dir)
     # Check if directory is already initialized -- if so, check that correct repo is checked out
     try
         # Check for existence of installation
-        # with a case-sensitive check for existence of ybc_tables vs YBC_tables (old)
+        # with a case-sensitive check for existence of ybc_tables (old) vs YBC_tables
         if isdir(joinpath(path, "ybc_tables")) && basename(realpath(joinpath(path, "ybc_tables"))) == "ybc_tables"
             @info """The repository name for the YBC bolometric corrections repository has changed and your installation needs to be updated. Reinitializing now."""
             # Use a temporary directory to handle case-insensitive file systems for which we can't mv from ybc_tables to YBC_tables directly
