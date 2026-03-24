@@ -28,6 +28,11 @@ axislegend(ax, position=:lt)
 fig
 ```
 
+## Krticka 2025
+```@docs
+BolometricCorrections.Krticka2025MassLoss
+```
+
 ## API
 ```@docs
 BolometricCorrections.AbstractMassLoss
