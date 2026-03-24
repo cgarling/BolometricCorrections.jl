@@ -225,7 +225,7 @@ true
 
 When providing a single argument (like a `NamedTuple`), we support automatic estimation
 of the mass-loss rate from other quantities using [mass loss models](@ref mass_loss).
-An example of this usage is given below using the [`Bjorklund2021MassLoss`](@ref) model,
+An example of this usage is given below using the [`Bjorklund2021MassLoss`](@ref BolometricCorrections.Bjorklund2021MassLoss) model,
 which calculates the stellar mass-loss rate from the metallicity (i.e., `Z(table)`)
 and the luminosity `logL`. `logg` and `Teff` are treated normally.
 
