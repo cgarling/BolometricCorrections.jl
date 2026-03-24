@@ -1,5 +1,6 @@
 using Test: @test
 using BolometricCorrections
+using BolometricCorrections: Bjorklund2021MassLoss, Krticka2025MassLoss, _parse_Mdot
 using BolometricCorrections.YBC
 using BolometricCorrections.YBC: _phoenix_atlas_interp
 using StaticArrays: SVector
@@ -216,6 +217,24 @@ for mh in Float32.(range(-2, 0; step=0.1))
                 for logg in range(-2.0, 9.0; length=50)
                     @test table(Teff, logg, Mdot) isa SVector{12, BolometricCorrections.YBC.dtype}
                 end
+            end
+        end
+    end
+end
+
+# Test with different mass-loss models
+@testset "YBCGrid with different mass-loss models" begin
+    for model in (Bjorklund2021MassLoss(), Krticka2025MassLoss())
+        mgrid = YBCGrid("acs_wfc"; extrapolate=true, mass_loss_model=model)
+        for mh in Float32.(range(-2, 0; step=0.1))
+            for Av in Float64.(range(extrema(mgrid).Av...; step=0.1))
+                table = mgrid(mh, Av)
+                @test table isa YBCTable
+                Teff, logg, logL = 30e3, 5.0, 6.0
+                nt = (Teff=Teff, logg=logg, logL=logL)
+                Mdot = _parse_Mdot(nt, Z(table), model)
+                @test table(Teff, logg, Mdot) isa SVector{12, BolometricCorrections.YBC.dtype}
+                @test table(Teff, logg, Mdot) ≈ table(nt)
             end
         end
     end
