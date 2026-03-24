@@ -59,8 +59,8 @@ end
                         C = 713//1000, 
                         D = 129//100, 
                         E = 110//100, 
-                        T0 = 144//10, 
-                        ΔT = 253//100, 
+                        T0 = 14_400, 
+                        ΔT = 2_530, 
                         Zsol = 13//1000) <: AbstractMassLoss
 
 Stellar mass-loss rate model from [Krticka2025](@citet), specifically their Equation 2, which reads
