@@ -54,14 +54,14 @@ function Mdot(m::Bjorklund2021MassLoss, Z, logL)
 end
 
 """
-Krticka2025MassLoss(A = -772//100, 
-                    B = 149//100, 
-                    C = 713//1000, 
-                    D = 129//100, 
-                    E = 110//100, 
-                    T0 = 144//10, 
-                    ΔT = 253//100, 
-                    Zsol = 13//1000) <: AbstractMassLoss
+    Krticka2025MassLoss(A = -772//100, 
+                        B = 149//100, 
+                        C = 713//1000, 
+                        D = 129//100, 
+                        E = 110//100, 
+                        T0 = 144//10, 
+                        ΔT = 253//100, 
+                        Zsol = 13//1000) <: AbstractMassLoss
 
 Stellar mass-loss rate model from [Krticka2025](@citet), specifically their Equation 2, which reads
 
@@ -72,7 +72,7 @@ Stellar mass-loss rate model from [Krticka2025](@citet), specifically their Equa
 \\end{align*}
 ```
 
-These are line-driven wind models run for OB stars with metallicities down to 0.01 ``Z_\\odot`` with the METUJE code.
+These are line-driven wind models run for OB stars with metallicities down to 0.01 ``Z_\\odot`` with the METUJE code. Note that their model grid assumed ``Z_\\odot = 0.013`` following [Asplund2009](@citet).
 
 Instances are callable with `(Z, logL, Teff)` arguments and **return the mass-loss rate in solar masses per year**, where `Z` is metal mass fraction, `logL` is the base-10 logarithm of the star's luminosity in units of solar luminosities, and `Teff` is the effective temperature of the star in Kelvin.
 """
@@ -86,15 +86,16 @@ struct Krticka2025MassLoss{T} <: AbstractMassLoss{T}
     ΔT::T # kK
     Zsol::T # Solar metallicity
 end
-function Krticka2025MassLoss(A = -772//100, B = 149//100, C = 713//1000, D = 129//100, E = 110//100, T0 = 144//10, ΔT = 253//100, Zsol = 13//1000)
+function Krticka2025MassLoss(A = -772//100, B = 149//100, C = 713//1000, D = 129//100, E = 110//100, T0 = 14_400, ΔT = 2_530, Zsol = 13//1000)
     return Krticka2025MassLoss(promote(A, B, C, D, E, T0, ΔT, Zsol)...)
 end
 function Mdot(m::Krticka2025MassLoss, Z, logL, Teff)
     # If arguments outside of model grid, return zero mass-loss rate
-    if !((0.01 <= Z <= 1) && (10_000 <= Teff <= 45_000))
+    Z_ratio = Z / m.Zsol
+    if !((0.01 <= Z_ratio <= 1) && (10_000 <= Teff <= 45_000))
         return zero(promote_type(typeof(Z), typeof(logL), typeof(Teff)))
     end
-    logZ = log10(Z / m.Zsol)
-    logMdot = m.A + m.B * (logL - 6) + m.C * logZ + m.D * log10(Teff / 1000) + m.E * (Z / m.Zsol) * exp(-(Teff - m.T0)^2 / m.ΔT^2)
+    logZ = log10(Z_ratio)
+    logMdot = m.A + m.B * (logL - 6) + m.C * logZ + m.D * log10(Teff / 1000) + m.E * Z_ratio * exp(-(Teff - m.T0)^2 / m.ΔT^2)
     return exp10(logMdot)
 end
