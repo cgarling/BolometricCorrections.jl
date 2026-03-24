@@ -95,7 +95,6 @@ function Mdot(m::Krticka2025MassLoss, Z, logL, Teff)
     if !((0.01 <= Z_ratio <= 1) && (10_000 <= Teff <= 45_000))
         return zero(promote_type(typeof(Z), typeof(logL), typeof(Teff)))
     end
-    logZ = log10(Z_ratio)
-    logMdot = m.A + m.B * (logL - 6) + m.C * logZ + m.D * log10(Teff / 1000) + m.E * Z_ratio * exp(-(Teff - m.T0)^2 / m.ΔT^2)
+    logMdot = m.A + m.B * (logL - 6) + m.C * log10(Z_ratio) + m.D * log10(Teff / 1000) + m.E * Z_ratio * exp(-(Teff - m.T0)^2 / m.ΔT^2)
     return exp10(logMdot)
 end
