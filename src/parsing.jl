@@ -61,6 +61,15 @@ end
     end
 end
 
+@inline function _parse_Z(iso)
+    iso_keys = keys(iso)
+    if :Z in iso_keys
+        return iso.Z
+    else
+        throw(ArgumentError("Provided `iso` argument does not contain a recognized metal mass fraction key, `(:Z,)`."))
+    end
+end
+
 @inline function _parse_Mdot(iso)
     iso_keys = keys(iso)
     if :Mdot in iso_keys
@@ -69,24 +78,17 @@ end
         throw(ArgumentError("One-argument `_parse_Mdot` failed as none of the supported keys `(:Mdot,)` found in $iso. Use two or three argument version to calculate mass-loss rate from other parameters."))
     end
 end
-@inline function _parse_Mdot(iso, model::Bjorklund2021MassLoss)
+
+@inline function _parse_Mdot(iso, model::AbstractMassLoss)
     iso_keys = keys(iso)
     if :Mdot in iso_keys
         return iso.Mdot
     else
-        try # Try to calculate from other quantities
-            if :Z in iso_keys
-                Z = iso.Z
-                logL = _parse_logL(iso)
-                return model.(Z, logL)
-            else
-                throw(ArgumentError("Model `Bjorklund2021MassLoss` requires metal mass fraction `:Z` as key in input."))
-            end
-        catch
-            throw(ArgumentError("Provided `iso` argument does not contain a recognized Mdot key, `(:Mdot,)` and cannot be calculated from the keys of $iso for the mass-loss model $model."))
-        end
+        Z = _parse_Z(iso)
+        return _parse_Mdot(iso, Z, model)
     end
 end
+
 @inline function _parse_Mdot(iso, Z, model::Bjorklund2021MassLoss)
     if :Mdot in keys(iso)
         return iso.Mdot
@@ -94,6 +96,20 @@ end
         try # Try to calculate from other quantities
             logL = _parse_logL(iso)
             return model.(Z, logL)
+        catch
+            throw(ArgumentError("Provided `iso` argument does not contain a recognized Mdot key, `(:Mdot,)` and cannot be calculated from the keys of $iso for the mass-loss model $model."))
+        end
+    end
+end
+
+@inline function _parse_Mdot(iso, Z, model::Krticka2025MassLoss)
+    if :Mdot in keys(iso)
+        return iso.Mdot
+    else
+        try # Try to calculate from other quantities
+            logL = _parse_logL(iso)
+            Teff = _parse_teff(iso)
+            return model.(Z, logL, Teff)
         catch
             throw(ArgumentError("Provided `iso` argument does not contain a recognized Mdot key, `(:Mdot,)` and cannot be calculated from the keys of $iso for the mass-loss model $model."))
         end

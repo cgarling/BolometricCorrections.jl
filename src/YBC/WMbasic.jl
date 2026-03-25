@@ -12,7 +12,7 @@ using StaticArrays: SVector
 using TypedTables: Table
 
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, Bjorklund2021MassLoss
+using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, AbstractMassLoss
 import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
@@ -225,7 +225,7 @@ true
 
 When providing a single argument (like a `NamedTuple`), we support automatic estimation
 of the mass-loss rate from other quantities using [mass loss models](@ref mass_loss).
-An example of this usage is given below using the [`Bjorklund2021MassLoss`](@ref) model,
+An example of this usage is given below using the [`Bjorklund2021MassLoss`](@ref BolometricCorrections.Bjorklund2021MassLoss) model,
 which calculates the stellar mass-loss rate from the metallicity (i.e., `Z(table)`)
 and the luminosity `logL`. `logg` and `Teff` are treated normally.
 
@@ -266,7 +266,7 @@ Base.extrema(::Type{<:WMbasicYBCTable}) = (Teff = (exp10(first(gridinfo.logTeff)
 (table::WMbasicYBCTable)(Teff::dtype, logg::dtype, Mdot::dtype) = table.itp(logg, log10(Teff), log10(Mdot))
 (table::WMbasicYBCTable)(Teff::Real, logg::Real, Mdot::Real) = table(convert(dtype, Teff), convert(dtype, logg), convert(dtype, Mdot))
 (table::WMbasicYBCTable)(arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg))
-(table::WMbasicYBCTable)(model::Bjorklund2021MassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
+(table::WMbasicYBCTable)(model::AbstractMassLoss, arg) = table(_parse_teff(arg), _parse_logg(arg), _parse_Mdot(arg, Z(table), model))
 # Methods to fix method ambiguities
 (::WMbasicYBCTable)(::AbstractArray{<:Real}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
 (::WMbasicYBCTable)(::Type{Table}) = throw(ArgumentError("Requires at least 2 input arrays (Teff, logg)."))
