@@ -1,6 +1,8 @@
 # Functions to calculate mass loss rates for different types of stars
 
-"""Abstract supertype for all models of stellar mass loss. New models `NewModel <: AbstractMassLoss` should implement `Mdot(m::NewModel, args...)` which should return the mass-loss rate in solar masses per year. A generic method is provided to make subtypes callable -- `(m::AbstractMassLoss)(args...) = Mdot(m, args...)`."""
+"""Abstract supertype for all models of stellar mass loss. New models `NewModel <: AbstractMassLoss` should implement `Mdot(m::NewModel, args...)` which should return the mass-loss rate in solar masses per year. A generic method is provided to make subtypes callable -- `(m::AbstractMassLoss)(args...) = Mdot(m, args...)`.
+
+For the mass-loss model to integrate with StellarTracks.jl for isochrone generation, the `_parse_Mdot(iso, Z, model)` method must be implemented, which will calculate the mass-loss rate from the keys of `iso` if a direct `:Mdot` key is not found."""
 abstract type AbstractMassLoss{T} end
 (m::AbstractMassLoss)(args...) = Mdot(m, args...)
 
