@@ -1,6 +1,6 @@
 # [MIST](@id MIST)
 
-This submodule enables interaction with the bolometric correction (BC) grid released as part of the Mesa Isochrones & Stellar Tracks ([MIST](https://waps.cfa.harvard.edu/MIST/) [Dotter2016,Choi2016](@cite)) project. The MIST BC grid is convenient because it includes a wide range of photometric filters and covers the full range of effective temperature, surface gravity, and metallicity relevant for most applications in stellar evolution. The grid is also *regular* in the dependent variables, greatly simplifying interpolation. The following figure shows a projection of a small portion of the BC table for one choice of metallicity and V-band extinction.
+This submodule enables interaction with the bolometric correction (BC) grid released as part of the Mesa Isochrones & Stellar Tracks ([MIST](https://mist.science) [Dotter2016,Choi2016](@cite)) project. The MIST BC grid is convenient because it includes a wide range of photometric filters and covers the full range of effective temperature, surface gravity, and metallicity relevant for most applications in stellar evolution. The grid is also *regular* in the dependent variables, greatly simplifying interpolation. The following figure shows a projection of a small portion of the BC table for one choice of metallicity and V-band extinction.
 
 ```@example
 using BolometricCorrections # hide

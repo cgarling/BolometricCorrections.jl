@@ -100,7 +100,7 @@ end
 
 
 
-# See https://waps.cfa.harvard.edu/MIST/model_grids.html#bolometric 
+# See https://mist.science/model_grids.html
 "Available filter sets for MIST bolometric corrections."
 const BC_sets = ("CFHT_MegaCam", "DECam", "GALEX", "HST_ACS_HRC", "HST_ACS_WFC",
                  "HST_WFC3", "HST_WFPC2", "JWST", "LSST", "PanStARRS", "SDSS",

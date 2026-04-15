@@ -7,7 +7,7 @@
 
 A bolometric correction (BC) is the offset between a star's absolute bolometric magnitude and its absolute magnitude in a specific bandpass or filter (e.g., V band). In order to place theoretical stellar models into observational filter spaces, bolometric corrections must be applied to the bolometric magnitudes of the stellar models. Here we provide access to and interpolation of pre-computed grids of [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction). See our documentation linked in the badges above for additional information. Currently supported bolometric correction grids are
 
- - [MIST](https://waps.cfa.harvard.edu/MIST/)
+ - [MIST](https://mist.science)
  - [YBC](https://gitlab.com/parsec-group/public_repos/YBC_tables), which interpolates between several different BC libaries -- supported sub-libraries are
    - [PHOENIX](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl-agss)
    - [ATLAS9](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/castelli-and-kurucz-atlas)
