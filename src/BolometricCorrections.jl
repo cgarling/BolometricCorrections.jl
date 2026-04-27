@@ -28,7 +28,8 @@ without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, 
 # Bolometric correction grid API
 
 """ `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. Generally, concrete subtypes should be callable with population properties (e.g., metallicity, reddening, etc.) to interpolate the full grid to these properties, returning a concrete subtype of [`BolometricCorrections.AbstractBCTable`](@ref). As different grids will have different population properties available (e.g., some support different α-element abundances in addition to total metallicity), the call signature to interpolate the grid is specific for each concrete subtype, which include
- - [`MISTBCGrid`](@ref)
+ - [`MISTBCGridv1`](@ref)
+ - [`MISTBCGridv2`](@ref)
  - [`PHOENIXYBCGrid`](@ref)
  - [`ATLAS9YBCGrid`](@ref)
 """
@@ -92,7 +93,7 @@ Tables may also be called with a single argument (usually a `NamedTuple`) which 
 
     (table::AbstractTable)(arg)
 
-We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
+We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTablev1`](@ref)).
 
     (table::AbstractBCTable)([::Type{TypedTables.Table},]
                              args::Vararg{AbstractArray{<:Real}, N}) where {N}

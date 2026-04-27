@@ -115,8 +115,9 @@ Lbol(::MISTZeropoints) = 3.828e33
 """
 This constant is an instance of [`MISTZeropoints`](@ref BolometricCorrections.MIST.MISTZeropoints).
 See the docs for more informations on supported operations.
-This constant is returned when calling [`zeropoints`](@ref) on instances of [`MIST.MISTBCGrid`](@ref)
-and [`MIST.MISTBCTable`](@ref).
+This constant is returned when calling [`zeropoints`](@ref) on instances of MIST grids
+([`MIST.MISTBCGridv1`](@ref), [`MIST.MISTBCGridv2`](@ref)) and tables
+([`MIST.MISTBCTablev1`](@ref), [`MIST.MISTBCTablev2`](@ref)).
 
 Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
 For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
