@@ -1,7 +1,7 @@
 name = "BolometricCorrections"
 uuid = "37ee4594-8306-40da-a4c2-d7ed95560e0b"
-authors = ["cgarling <chris.t.garling@gmail.com>"]
 version = "0.1.8"
+authors = ["cgarling <chris.t.garling@gmail.com>"]
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
@@ -31,6 +31,7 @@ Documenter = "1"
 FITSIO = "0.17.5"
 Git = "1.5"
 Interpolations = "0.15, 0.16"
+Logging = "<0.0.1, 1"
 Printf = "<0.0.1, 1"
 SafeTestsets = "0.1"
 Scratch = "1"
@@ -45,9 +46,10 @@ julia = "1.7"
 
 [extras]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [targets]
-test = ["Documenter", "SafeTestsets", "Test", "TypedTables"]
+test = ["Documenter", "Logging", "SafeTestsets", "Test", "TypedTables"]

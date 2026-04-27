@@ -1,4 +1,4 @@
-using BolometricCorrections.MIST: MISTChemistry, MISTChemistryv1, MISTChemistryv2, MISTBCGridv1, MISTBCGridv2, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
+using BolometricCorrections.MIST: MISTChemistryv1, MISTChemistryv2, MISTBCGridv1, MISTBCGridv2, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 using Test: @test, @testset
 
 # Presently the MIST chemistry is a little wonky because the Asplund protostellar abundances
@@ -7,7 +7,6 @@ using Test: @test, @testset
 
 # const rtol = 1e-3
 @testset "MISTChemistryv1" begin
-    @test MISTChemistry() == MISTChemistryv1() # Test deprecated alias
 
     chem = MISTChemistryv1()
     @test X(chem) + Y(chem) + Z(chem) ≈ 1
