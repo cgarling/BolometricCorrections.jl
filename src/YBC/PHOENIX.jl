@@ -8,7 +8,7 @@ module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
 import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
-using ...BolometricCorrections.MIST: MISTChemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistry
+using ...BolometricCorrections.MIST: MISTChemistryv1 # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTChemistryv1
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 using ArgCheck: @argcheck
@@ -72,7 +72,7 @@ YBC PHOENIX bolometric correction grid for photometric system YBC/acs_wfc.
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [M/H], Av
 YBC PHOENIX BT-Settl bolometric correction table with for system YBC/acs_wfc with [M/H] -1.01 and V-band extinction 0.11
 
-julia> chemistry(grid) isa BolometricCorrections.MIST.MISTChemistry # Same chemical mixture as MIST
+julia> chemistry(grid) isa BolometricCorrections.MIST.MISTChemistryv1 # Same chemical mixture as MIST
 true
 ```
 """
@@ -208,7 +208,7 @@ julia> using TypedTables: Table # `table(Table, array, array)` will return resul
 julia> table(Table, [2755, 2756], [0.01, 0.02]) isa Table
 true
 
-julia> chemistry(table) isa BolometricCorrections.MIST.MISTChemistry # Same chemical mixture as MIST
+julia> chemistry(table) isa BolometricCorrections.MIST.MISTChemistryv1 # Same chemical mixture as MIST
 true
 
 julia> PHOENIXYBCTable("acs_wfc", -2.0, 0.5) isa PHOENIXYBCTable # Can construct without a PHOENIXYBCGrid

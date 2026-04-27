@@ -197,7 +197,7 @@ Return the correct concrete instance of [`AbstractZeropoints`](@ref BolometricCo
 for the type of `grid` or `table`.
 
 ```jldoctest
-julia> zeropoints(MISTBCGrid("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
+julia> zeropoints(MISTBCGridv1("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
 true
 ```
 """
@@ -261,7 +261,7 @@ provided bolometric correction grid or table. This provides a convenient
 programmatic way to obtain this chemical information.
 
 ```jldoctest
-julia> grid = MISTBCGrid("JWST");
+julia> grid = MISTBCGridv1("JWST");
 
 julia> chemistry(grid)
 BolometricCorrections.MIST.MISTChemistryv1()
