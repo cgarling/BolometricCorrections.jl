@@ -23,8 +23,8 @@ function parse_mist_header(fname::AbstractString)
             # let first part be constant, only read special the filters in the header
             # header = filter(!isempty, split(split(line, "Rv")[2], ' '))
             # return vcat(["Teff", "logg", "feh", "Av", "Rv"], convert(Vector{String}, header))
-            header = filter(!isempty, split(split(line, string(last(_mist_dependents)))[2], ' '))
-            return vcat(SVector(string.(_mist_dependents)), convert(Vector{String}, header))
+            header = filter(!isempty, split(split(line, string(last(_mist_v1_dependents)))[2], ' '))
+            return vcat(SVector(string.(_mist_v1_dependents)), convert(Vector{String}, header))
         end
     end
 end
@@ -73,7 +73,7 @@ function custom_unpack(fname::AbstractString) # Path to datadep
     
     # Process into a single compressed CSV for easy reads
     # Use name of datadep (last directory of path) for file name
-    bfname = splitpath(fname)[end-1] 
+    bfname = splitpath(fname)[end-1]
     all_files = readdir(out_dir; join=true)
     # Process files in sorted order of [Fe/H] to ensure final file
     # has sorted [Fe/H]
@@ -81,7 +81,7 @@ function custom_unpack(fname::AbstractString) # Path to datadep
     idxs = sortperm(feh_vals) 
     header = parse_mist_header(first(all_files))
     bigtable = reduce(vcat, read_mist_bc(all_files[i], header) for i in idxs)
-    CSV.write(joinpath(fpath, splitext(bfname)[1]*".gz"), bigtable; compress=true)
+    CSV.write(joinpath(fpath, bfname * ".gz"), bigtable; compress=true)
     # Done with original .txz and extracted files so remove
     rm(fname)
     rm(out_dir; force=true, recursive=true)
@@ -136,7 +136,7 @@ function custom_unpack_v2(fname::AbstractString) # Path to datadep
     idxs = sortperm(feh_afe_vals)
     header = parse_mist_v2_header(first(all_files))
     bigtable = reduce(vcat, read_mist_bc(all_files[i], header) for i in idxs)
-    CSV.write(joinpath(fpath, splitext(bfname)[1]*".gz"), bigtable; compress=true)
+    CSV.write(joinpath(fpath, bfname * ".gz"), bigtable; compress=true)
     # Done with original .txz and extracted files so remove
     rm(fname)
     rm(out_dir; force=true, recursive=true)

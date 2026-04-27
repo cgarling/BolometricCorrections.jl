@@ -21,15 +21,15 @@ table1 = grid(-1.01, 0.01)
 @test zeropoints(grid) === zpt
 @test zeropoints(table1) === zpt
 
-@test gridname(MISTBCGrid) isa String
+@test gridname(MISTBCGridv1) isa String
 @test gridname(grid) isa String
-@test gridname(MISTBCTable) isa String
+@test gridname(MISTBCTablev1) isa String
 @test gridname(table1) isa String
 
 for feh in range(extrema(BolometricCorrections.MIST.gridinfo.feh)...; step=0.1)
     for Av in range(extrema(BolometricCorrections.MIST.gridinfo.Av)...; step=0.1)
         table = grid(feh, Av)
-        @test table isa MISTBCTable
+        @test table isa MISTBCTablev1
         @test table(3000, 1.0) isa AbstractVector # technically SVector but ...
     end
 end

@@ -264,12 +264,12 @@ programmatic way to obtain this chemical information.
 julia> grid = MISTBCGrid("JWST");
 
 julia> chemistry(grid)
-BolometricCorrections.MIST.MISTChemistry()
+BolometricCorrections.MIST.MISTChemistryv1()
 
 julia> table = grid(-1.5, 0.03);
 
 julia> chemistry(table)
-BolometricCorrections.MIST.MISTChemistry()
+BolometricCorrections.MIST.MISTChemistryv1()
 ```
 """
 chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
@@ -417,7 +417,7 @@ export Table, columnnames, columns, getproperties, gridname, filternames, zeropo
 include(joinpath("MIST", "MIST.jl"))
 using .MIST
 @compat public MIST
-export MISTBCGrid, MISTBCTable
+export MISTBCGrid, MISTBCTable, MISTBCGridv1, MISTBCTablev1, MISTBCGridv2, MISTBCTablev2
 
 include(joinpath("YBC", "YBC.jl"))
 using .YBC

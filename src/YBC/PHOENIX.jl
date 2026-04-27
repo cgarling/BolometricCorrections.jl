@@ -167,7 +167,7 @@ Base.extrema(::Type{<:PHOENIXYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff))
                                           Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
 gridname(::Type{<:PHOENIXYBCGrid}) = "YBC-PHOENIX"
-chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistry()
+chemistry(::Type{<:PHOENIXYBCGrid}) = MISTChemistryv1()
 # zeropoints(::PHOENIXYBCGrid) = zpt
 
 
@@ -228,7 +228,7 @@ function PHOENIXYBCTable(MH::Real, Av::Real, mag_zpt::Vector{<:Real}, systems, n
     T = dtype # T = promote_type(typeof(MH), typeof(Av), eltype(mag_zpt))
     return PHOENIXYBCTable(convert(T, MH), convert(T, Av), convert(Vector{T}, mag_zpt), convert.(String, systems), String(name), itp, filters)
 end
-chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistry()
+chemistry(::Type{<:PHOENIXYBCTable}) = MISTChemistryv1()
 Base.show(io::IO, z::PHOENIXYBCTable) = print(io, "YBC PHOENIX BT-Settl bolometric correction table with for system $(z.name) with [M/H] ",
                                               z.MH, " and V-band extinction ", z.Av)
 filternames(table::PHOENIXYBCTable) = table.filters
