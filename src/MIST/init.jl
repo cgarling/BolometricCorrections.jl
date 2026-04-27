@@ -29,6 +29,17 @@ function parse_mist_header(fname::AbstractString)
     end
 end
 
+function parse_mist_v2_header(fname::AbstractString)
+    for (linenum, line) in enumerate(eachline(fname))
+        if linenum == 4
+            # Header line: "# lgTef  logg  Fe_H a_Fe   Av   Rv  <filters...>"
+            # Split on last dependent (Rv) to isolate filter names
+            header = filter(!isempty, split(split(line, string(last(_mist_v2_dependents)))[2], ' '))
+            return vcat(SVector(string.(_mist_v2_dependents)), convert(Vector{String}, header))
+        end
+    end
+end
+
 # Get [Fe/H] from name of MIST BC file
 function mist_feh(fname::AbstractString)
     fname = basename(fname) # Get file name part of path
@@ -37,6 +48,16 @@ function mist_feh(fname::AbstractString)
         feh *= -1
     end
     return feh
+end
+
+# Get [Fe/H] and [α/Fe] from name of MIST v2.5 BC file
+# Format: feh+0.00_afe+0.0.GALEX
+function mist_v2_feh_afe(fname::AbstractString)
+    fname = basename(fname)
+    m = match(r"feh([+-][0-9.]+)_afe([+-][0-9.]+)\.", fname)
+    feh = parse(Float64, m[1])
+    afe = parse(Float64, m[2])
+    return (feh, afe)
 end
 
 function custom_unpack(fname::AbstractString) # Path to datadep
@@ -98,15 +119,46 @@ function custom_unpack(fname::AbstractString) # Path to datadep
     
 end
 
+function custom_unpack_v2(fname::AbstractString) # Path to datadep
+    fpath = dirname(fname)
+    out_dir = joinpath(fpath, "files")
+    if isdir(out_dir)
+        rm(out_dir; force=true, recursive=true)
+    end
+    unpack_txz(fname, out_dir)
+
+    # Process into a single compressed CSV for easy reads
+    # Use name of datadep (last directory of path) for file name
+    bfname = splitpath(fname)[end-1]
+    all_files = readdir(out_dir; join=true)
+    # Sort by (feh, afe) to ensure final file has sorted [Fe/H] and [α/Fe]
+    feh_afe_vals = mist_v2_feh_afe.(all_files)
+    idxs = sortperm(feh_afe_vals)
+    header = parse_mist_v2_header(first(all_files))
+    bigtable = reduce(vcat, read_mist_bc(all_files[i], header) for i in idxs)
+    CSV.write(joinpath(fpath, splitext(bfname)[1]*".gz"), bigtable; compress=true)
+    # Done with original .txz and extracted files so remove
+    rm(fname)
+    rm(out_dir; force=true, recursive=true)
+end
+
 
 
 # See https://mist.science/model_grids.html
-"Available filter sets for MIST bolometric corrections."
-const BC_sets = ("CFHT_MegaCam", "DECam", "GALEX", "HST_ACS_HRC", "HST_ACS_WFC",
-                 "HST_WFC3", "HST_WFPC2", "JWST", "LSST", "PanStARRS", "SDSS",
-                 "SkyMapper", "Subaru/HSC", "IPHAS", "Spitzer/IRAC", "SPLUS",
-                 "Swift", "UBVRIplus", "UKIDSS", "UVIT", "VISTA", "Washington",
-                 "WFIRST", "WISE")
+"Available filter sets for MIST v1.2 bolometric corrections."
+const BC_sets_v1 = ("CFHT_MegaCam", "DECam", "GALEX", "HST_ACS_HRC", "HST_ACS_WFC",
+                    "HST_WFC3", "HST_WFPC2", "JWST", "LSST", "PanStARRS", "SDSS",
+                    "SkyMapper", "Subaru/HSC", "IPHAS", "Spitzer/IRAC", "SPLUS",
+                    "Swift", "UBVRIplus", "UKIDSS", "UVIT", "VISTA", "Washington",
+                    "WFIRST", "WISE")
+"Available filter sets for MIST v2.5 bolometric corrections."
+const BC_sets_v2 = ("CFHT_MegaCam", "DECam", "Euclid", "GALEX", "HSC", "HST_ACS_HRC",
+                    "HST_ACS_SBC", "HST_ACS_WFC", "HST_WFC3", "HST_WFPC2", "IPHAS",
+                    "JWST", "NIRISS", "LSST", "PanSTARRS", "RoboAO", "Roman", "SDSS",
+                    "Spitzer", "SPLUS", "SkyMapper", "Swift", "UBVRIplus", "UKIDSS",
+                    "UVIT", "VISTA", "Washington", "WISE")
+"Available filter sets for MIST bolometric corrections. Use `BC_sets.v1` or `BC_sets.v2` to access specific versions."
+const BC_sets = (v1 = BC_sets_v1, v2 = BC_sets_v2)
 
 function __init__()
     v1_prefix = "https://mist.science/BC_tables/v1/"
@@ -215,88 +267,90 @@ function __init__()
     v2_prefix = "https://mist.science/BC_tables/v2/"
     register(DataDep("MIST_CFHT_MegaCam_v2.5", "MIST v2.5 bolometric corrections for CFHT/MegaCam",
                      v2_prefix*"CFHTugriz.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_DECam_v2.5", "MIST v2.5 bolometric corrections for the Dark Energy Camera (DECam)",
-                     v2_prefix*"DECam.txz";
-                     post_fetch_method=custom_unpack))
+                     v2_prefix*"DECam.txz",
+                     "5682500cbdabae5bae488966534bd5e4e2740fec76571e3935c08e7f1ab64fb1";
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_Euclid_v2.5", "MIST v2.5 bolometric corrections for Euclid",
                      v2_prefix*"Euclid.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_GALEX_v2.5", "MIST v2.5 bolometric corrections for GALEX",
-                     v2_prefix*"GALEX.txz";
-                     post_fetch_method=custom_unpack))
+                     v2_prefix*"GALEX.txz",
+                     "534e7c33cb0803f1de3399fb4921b7095ba6a959e9567981768749bc2f8b6edf";
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HSC_v2.5", "MIST v2.5 bolometric corrections for Subaru Hyper Suprime-Cam",
                      v2_prefix*"HSC.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HST_ACS_HRC_v2.5", "MIST v2.5 bolometric corrections for HST ACS High-Resolution Channel",
                      v2_prefix*"HST_ACS_HRC.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HST_ACS_SBC_v2.5", "MIST v2.5 bolometric corrections for HST ACS Solar Blind Channel",
                      v2_prefix*"HST_ACS_SBC.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HST_ACS_WFC_v2.5", "MIST v2.5 bolometric corrections for HST ACS Wide Field Channel",
                      v2_prefix*"HST_ACS_WFC.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HST_WFC3_v2.5", "MIST v2.5 bolometric corrections for HST WFC3",
                      v2_prefix*"HST_WFC3.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_HST_WFPC2_v2.5", "MIST v2.5 bolometric corrections for HST WFPC2",
                      v2_prefix*"HST_WFPC2.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_IPHAS_v2.5", "MIST v2.5 bolometric corrections for the INT Photometric H-α Survey (IPHAS)",
                      v2_prefix*"IPHAS.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_JWST_v2.5", "MIST v2.5 bolometric corrections for the James Webb Space Telescope (JWST) NIRCam",
                      v2_prefix*"JWST.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_NIRISS_v2.5", "MIST v2.5 bolometric corrections for the James Webb Space Telescope (JWST) NIRISS",
                      v2_prefix*"NIRISS.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_LSST_v2.5", "MIST v2.5 bolometric corrections for the Vera Rubin Observatory (Rubin/LSST)",
                      v2_prefix*"LSST.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_PanSTARRS_v2.5", "MIST v2.5 bolometric corrections for PanSTARRS",
                      v2_prefix*"PanSTARRS.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_RoboAO_v2.5", "MIST v2.5 bolometric corrections for RoboAO",
                      v2_prefix*"RoboAO.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_Roman_v2.5", "MIST v2.5 bolometric corrections for the Nancy Grace Roman Space Telescope",
                      v2_prefix*"Roman.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_SDSS_v2.5", "MIST v2.5 bolometric corrections for the Sloan Digital Sky Survey (SDSS)",
                      v2_prefix*"SDSSugriz.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_Spitzer_v2.5", "MIST v2.5 bolometric corrections for the Spitzer IRAC",
                      v2_prefix*"SPITZER.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_SPLUS_v2.5", "MIST v2.5 bolometric corrections for the S-PLUS survey",
                      v2_prefix*"SPLUS.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_SkyMapper_v2.5", "MIST v2.5 bolometric corrections for SkyMapper",
                      v2_prefix*"SkyMapper.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_Swift_v2.5", "MIST v2.5 bolometric corrections for the Swift Observatory",
                      v2_prefix*"Swift.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_UBVRIplus_v2.5", "MIST v2.5 bolometric corrections for the Bessell filters, 2MASS, Kepler, Hipparcos, Gaia, and Tycho",
                      v2_prefix*"UBVRIplus.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_UKIDSS_v2.5", "MIST v2.5 bolometric corrections for the UKIDSS survey",
                      v2_prefix*"UKIDSS.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_UVIT_v2.5", "MIST v2.5 bolometric corrections for the Ultra-Violet Imaging Telescope (UVIT)",
                      v2_prefix*"UVIT.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_VISTA_v2.5", "MIST v2.5 bolometric corrections for the Visible and Infrared Survey Telescope for Astronomy (VISTA)",
                      v2_prefix*"VISTA.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_Washington_v2.5", "MIST v2.5 bolometric corrections for Washington, Strömgren, and DDO51 filters",
                      v2_prefix*"WashDDOuvby.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     register(DataDep("MIST_WISE_v2.5", "MIST v2.5 bolometric corrections for the Wide-field Infrared Explorer (WISE)",
                      v2_prefix*"WISE.txz";
-                     post_fetch_method=custom_unpack))
+                     post_fetch_method=custom_unpack_v2))
     # Load datadeps for development
     # datadep"MIST_CFHT_MegaCam"
     # datadep"MIST_DECam"

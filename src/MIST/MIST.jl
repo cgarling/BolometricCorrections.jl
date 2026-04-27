@@ -30,8 +30,12 @@ export MISTBCGrid, MISTBCTable, MISTChemistry, X, X_phot, Y, Y_phot, Z, Z_phot, 
 
 """ `NTuple{5, Symbol}` listing the dependent variables in the MIST BC grid. """
 const _mist_dependents = (:Teff, :logg, :feh, :Av, :Rv)
+""" `NTuple{6, Symbol}` listing the dependent variables in the MIST v2.5 BC grid (adds `afe` for [α/Fe]). """
+const _mist_v2_dependents = (:lgTef, :logg, :feh, :afe, :Av, :Rv)
 """ `NTuple{5, Symbol}` giving the order in which the MIST dependent variables iterate in the post-processed data tables. """
 const _mist_dependents_order = (:logg, :Teff, :Av, :Rv, :feh)
+""" `NTuple{6, Symbol}` giving the order in which the MIST v2.5 dependent variables iterate in the post-processed data tables. """
+const _mist_v2_dependents_order = (:logg, :lgTef, :Av, :afe, :feh, :Rv) # Rv always 3.1
 """ Unique values of `Teff` in the MIST BC tables. """
 const _mist_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250.0, 4500.0, 4750.0, 5000.0, 5250.0, 5500.0, 5750.0, 6000.0, 6250.0, 6500.0, 6750.0, 7000.0, 7250.0, 7500.0, 7750.0, 8000.0, 8250.0, 8500.0, 8750.0, 9000.0, 9250.0, 9500.0, 9750.0, 10000.0, 11000.0, 12000.0, 13000.0, 14000.0, 15000.0, 16000.0, 17000.0, 18000.0, 19000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 60000.0, 70000.0, 80000.0, 90000.0, 100000.0, 110000.0, 120000.0, 130000.0, 140000.0, 150000.0, 160000.0, 170000.0, 180000.0, 190000.0, 200000.0, 300000.0, 400000.0, 500000.0, 600000.0, 700000.0, 800000.0, 900000.0, 1.0e6) # length=70
 """ Unique values of `logg` in the MIST BC tables. """
@@ -50,8 +54,6 @@ const gridinfo = (Teff = _mist_Teff,
                   feh = _mist_feh,
                   Av = _mist_Av,
                   Rv = _mist_Rv)
-                  # dependents = _mist_dependents,
-                  # dependents_order = _mist_dependents_order,
 @compat public gridinfo
 
 """ Struct to contain the MIST zeropoint information.
@@ -358,7 +360,6 @@ function select_subtable(table::Table, feh::Real, Av::Real)
     # length(Teff) * length(logg) * length(Rv) rows
     nrows_per_Av = length(_mist_Teff) * length(_mist_logg) * length(_mist_Rv) # 1820
     nrows_per_feh = nrows_per_Av * length(_mist_Av)
-    # The order of iteration of the dependent variables is given by _mist_dependents_order
     # We need to identify the correct feh first, then the correct Av within that
     idx1 = 1 + nrows_per_feh * (findfirst(==(feh), _mist_feh) - 1)
     idx2 = idx1 + nrows_per_Av * (findfirst(==(Av), _mist_Av) - 1)
