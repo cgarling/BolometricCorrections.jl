@@ -167,6 +167,10 @@ include("MIST_v1.jl")
 # All v2.5-specific types and constants
 include("MIST_v2.jl")
 
+"Unique values for dependent variables in the MIST v1.2 (key `v1`) and v2.5 (key `v2`) bolometric correction grids."
+const gridinfo = (v1 = gridinfov1, v2 = gridinfov2)
+@compat public gridinfo
+
 #################################
 # Deprecated aliases for v1 types
 #################################

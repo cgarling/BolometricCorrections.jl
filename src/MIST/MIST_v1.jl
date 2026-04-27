@@ -3,7 +3,7 @@
 ######################################
 
 """ Unique values of `Teff` in the MIST v1.2 BC tables. """
-const _mist_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250.0, 4500.0,
+const _mist_v1_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250.0, 4500.0,
                     4750.0, 5000.0, 5250.0, 5500.0, 5750.0, 6000.0, 6250.0, 6500.0, 6750.0,
                     7000.0, 7250.0, 7500.0, 7750.0, 8000.0, 8250.0, 8500.0, 8750.0, 9000.0,
                     9250.0, 9500.0, 9750.0, 10000.0, 11000.0, 12000.0, 13000.0, 14000.0,
@@ -13,68 +13,67 @@ const _mist_Teff = (2500.0, 2800.0, 3000.0, 3200.0, 3500.0, 3750.0, 4000.0, 4250
                     170000.0, 180000.0, 190000.0, 200000.0, 300000.0, 400000.0, 500000.0,
                     600000.0, 700000.0, 800000.0, 900000.0, 1.0e6) # length=70
 """ Unique values of `logg` in the MIST v1.2 BC tables. """
-const _mist_logg = (-4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0,
+const _mist_v1_logg = (-4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0,
                     3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5) # length=26
 """ Unique values of ``A_V`` in the MIST v1.2 BC tables. """
-const _mist_Av = (0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0) # length=13
+const _mist_v1_Av = (0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0) # length=13
 """ Unique values of ``R_V`` in the MIST v1.2 BC tables. """
-const _mist_Rv = (3.1,) # length=1
+const _mist_v1_Rv = (3.1,) # length=1
 """ Unique values of [Fe/H] in the MIST v1.2 BC tables. """
-const _mist_feh = (-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0,
+const _mist_v1_feh = (-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0,
                    -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75) # length=18
 
 """ Unique values for dependent variables in the MIST v1.2 bolometric correction grid. """
-const gridinfo = (Teff = _mist_Teff,
-                  logg = _mist_logg,
-                  feh = _mist_feh,
-                  Av = _mist_Av,
-                  Rv = _mist_Rv)
-@compat public gridinfo
+const gridinfov1 = (Teff = _mist_v1_Teff,
+                    logg = _mist_v1_logg,
+                    feh  = _mist_v1_feh,
+                    Av   = _mist_v1_Av,
+                    Rv   = _mist_v1_Rv)
 
 ######################################
 # MIST v1.2 validation and table I/O
 ######################################
 
 """
-    check_vals(feh, Av)
+    check_vals_v1(feh, Av)
 
 Validate that [Fe/H] value `feh` and ``A_V`` value `Av` are valid for the MIST v1.2 BC grid.
 Throws `ArgumentError` if check fails, returns `nothing` if check is successful.
 
 ```jldoctest
-julia> using BolometricCorrections.MIST: check_vals
+julia> using BolometricCorrections.MIST: check_vals_v1
 
-julia> check_vals(-2, 0.0) # Check passes, returns nothing
+julia> check_vals_v1(-2, 0.0) # Check passes, returns nothing
 
 julia> using Test: @test_throws, Pass
 
-julia> @test_throws(ArgumentError, check_vals(-5, 0.0)) isa Pass # Invalid `mh`, throws error
+julia> @test_throws(ArgumentError, check_vals_v1(-5, 0.0)) isa Pass # Invalid `mh`, throws error
 true
 
-julia> @test_throws(ArgumentError, check_vals(-2, 100.0)) isa Pass # Invalid `Av`, throws error
+julia> @test_throws(ArgumentError, check_vals_v1(-2, 100.0)) isa Pass # Invalid `Av`, throws error
 true
 ```
 """
-function check_vals(feh, Av)
-    feh_ext = extrema(_mist_feh)
+function check_vals_v1(feh, Av)
+    feh_ext = extrema(_mist_v1_feh)
     if feh < first(feh_ext) || feh > last(feh_ext)
         throw(ArgumentError("Provided [Fe/H] $feh is outside the bounds for the MIST BC tables $feh_ext"))
     end
-    Av_ext = extrema(_mist_Av)
+    Av_ext = extrema(_mist_v1_Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
         throw(ArgumentError("Provided A_v $Av is outside the bounds for the MIST BC tables $Av_ext"))
     end
 end
 
 # Extract a subtable out of table where table.feh == feh and table.Av == Av
-function select_subtable(table::Table, feh::Real, Av::Real)
-    @argcheck feh ∈ _mist_feh && Av ∈ _mist_Av
+function select_subtable_v1(table::Table, feh::Real, Av::Real)
+    @argcheck feh ∈ _mist_v1_feh && Av ∈ _mist_v1_Av
     # We can use the known structure of the data table to prevent having to do a filter at all
     # For each unique Rv (1), Av and feh there will be length(Teff) * length(logg) * length(Rv) rows
-    nrows_per_Av  = length(_mist_Teff) * length(_mist_logg) * length(_mist_Rv) # 1820
-    nrows_per_feh = nrows_per_Av * length(_mist_Av)
-    idx1 = 1 + nrows_per_feh * (findfirst(==(feh), _mist_feh) - 1)
-    idx2 = idx1 + nrows_per_Av * (findfirst(==(Av), _mist_Av) - 1)
+    nrows_per_Av  = length(_mist_v1_Teff) * length(_mist_v1_logg) * length(_mist_v1_Rv) # 1820
+    nrows_per_feh = nrows_per_Av * length(_mist_v1_Av)
+    idx1 = 1 + nrows_per_feh * (findfirst(==(feh), _mist_v1_feh) - 1)
+    idx2 = idx1 + nrows_per_Av * (findfirst(==(Av), _mist_v1_Av) - 1)
     idx3 = idx2 + nrows_per_Av - 1
     return table[idx2:idx3]
 end
@@ -178,11 +177,11 @@ Base.show(io::IO, z::MISTBCGridv1) =
     print(io, "MIST v1.2 bolometric correction grid for photometric system ",
           splitpath(splitext(z.filename)[1])[end])
 Table(grid::MISTBCGridv1) = grid.table
-Base.extrema(::Type{<:MISTBCGridv1}) = (Teff = (first(gridinfo.Teff), last(gridinfo.Teff)),
-                                        logg = (first(gridinfo.logg), last(gridinfo.logg)),
-                                        feh  = (first(gridinfo.feh),  last(gridinfo.feh)),
-                                        Av   = (first(gridinfo.Av),   last(gridinfo.Av)),
-                                        Rv   = (first(gridinfo.Rv),   last(gridinfo.Rv)))
+Base.extrema(::Type{<:MISTBCGridv1}) = (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
+                                        logg = (first(gridinfov1.logg), last(gridinfov1.logg)),
+                                        feh  = (first(gridinfov1.feh),  last(gridinfov1.feh)),
+                                        Av   = (first(gridinfov1.Av),   last(gridinfov1.Av)),
+                                        Rv   = (first(gridinfov1.Rv),   last(gridinfov1.Rv)))
 filternames(grid::MISTBCGridv1) = columnnames(grid)[length(_mist_v1_dependents)+1:end]
 gridname(::Type{<:MISTBCGridv1}) = "MIST"
 zeropoints(::MISTBCGridv1) = zpt
@@ -213,8 +212,8 @@ filternames(table::MISTBCTablev1) = table.filters
 gridname(::Type{<:MISTBCTablev1}) = "MIST"
 zeropoints(::MISTBCTablev1) = zpt
 Base.extrema(::Type{<:MISTBCTablev1}) =
-    (Teff = (first(gridinfo.Teff), last(gridinfo.Teff)),
-     logg = (first(gridinfo.logg), last(gridinfo.logg)))
+    (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
+     logg = (first(gridinfov1.logg), last(gridinfov1.logg)))
 MH(t::MISTBCTablev1) = t.feh
 Z(t::MISTBCTablev1) = Z(chemistry(t), MH(t))
 chemistry(::Type{<:MISTBCTablev1}) = MISTChemistryv1()
@@ -245,40 +244,40 @@ true
 ```
 """
 function MISTBCTablev1(grid::MISTBCGridv1, feh::Real, Av::Real)
-    check_vals(feh, Av)
+    check_vals_v1(feh, Av)
     filters = filternames(grid)
     table = Table(grid)
 
-    if feh ∈ _mist_feh && Av ∈ _mist_Av
-        subtable = select_subtable(table, feh, Av)
+    if feh ∈ _mist_v1_feh && Av ∈ _mist_v1_Av
+        subtable = select_subtable_v1(table, feh, Av)
         submatrix = Tables.matrix(getproperties(subtable, filters))
     else
-        if feh ∈ _mist_feh
-            Av_idx = searchsortedfirst(SVector(_mist_Av), Av) - 1
-            Av1, Av2 = _mist_Av[Av_idx], _mist_Av[Av_idx + 1]
-            mat1 = Tables.matrix(getproperties(select_subtable(table, feh, Av1), filters))
-            mat2 = Tables.matrix(getproperties(select_subtable(table, feh, Av2), filters))
+        if feh ∈ _mist_v1_feh
+            Av_idx = searchsortedfirst(SVector(_mist_v1_Av), Av) - 1
+            Av1, Av2 = _mist_v1_Av[Av_idx], _mist_v1_Av[Av_idx + 1]
+            mat1 = Tables.matrix(getproperties(select_subtable_v1(table, feh, Av1), filters))
+            mat2 = Tables.matrix(getproperties(select_subtable_v1(table, feh, Av2), filters))
             submatrix = interp1d(Av, Av1, Av2, mat1, mat2)
-        elseif Av ∈ _mist_Av
-            feh_idx = searchsortedfirst(SVector(_mist_feh), feh) - 1
-            feh1, feh2 = _mist_feh[feh_idx], _mist_feh[feh_idx + 1]
-            mat1 = Tables.matrix(getproperties(select_subtable(table, feh1, Av), filters))
-            mat2 = Tables.matrix(getproperties(select_subtable(table, feh2, Av), filters))
+        elseif Av ∈ _mist_v1_Av
+            feh_idx = searchsortedfirst(SVector(_mist_v1_feh), feh) - 1
+            feh1, feh2 = _mist_v1_feh[feh_idx], _mist_v1_feh[feh_idx + 1]
+            mat1 = Tables.matrix(getproperties(select_subtable_v1(table, feh1, Av), filters))
+            mat2 = Tables.matrix(getproperties(select_subtable_v1(table, feh2, Av), filters))
             submatrix = interp1d(feh, feh1, feh2, mat1, mat2)
         else
-            feh_idx = searchsortedfirst(SVector(_mist_feh), feh) - 1
-            feh1, feh2 = _mist_feh[feh_idx], _mist_feh[feh_idx + 1]
-            Av_idx = searchsortedfirst(SVector(_mist_Av), Av) - 1
-            Av1, Av2 = _mist_Av[Av_idx], _mist_Av[Av_idx + 1]
-            mat1_1 = Tables.matrix(getproperties(select_subtable(table, feh1, Av1), filters))
-            mat2_1 = Tables.matrix(getproperties(select_subtable(table, feh2, Av1), filters))
-            mat1_2 = Tables.matrix(getproperties(select_subtable(table, feh1, Av2), filters))
-            mat2_2 = Tables.matrix(getproperties(select_subtable(table, feh2, Av2), filters))
+            feh_idx = searchsortedfirst(SVector(_mist_v1_feh), feh) - 1
+            feh1, feh2 = _mist_v1_feh[feh_idx], _mist_v1_feh[feh_idx + 1]
+            Av_idx = searchsortedfirst(SVector(_mist_v1_Av), Av) - 1
+            Av1, Av2 = _mist_v1_Av[Av_idx], _mist_v1_Av[Av_idx + 1]
+            mat1_1 = Tables.matrix(getproperties(select_subtable_v1(table, feh1, Av1), filters))
+            mat2_1 = Tables.matrix(getproperties(select_subtable_v1(table, feh2, Av1), filters))
+            mat1_2 = Tables.matrix(getproperties(select_subtable_v1(table, feh1, Av2), filters))
+            mat2_2 = Tables.matrix(getproperties(select_subtable_v1(table, feh2, Av2), filters))
             submatrix = interp2d(feh, Av, feh1, feh2, Av1, Av2, mat1_1, mat2_1, mat1_2, mat2_2)
         end
     end
-    itp = interpolate((SVector(_mist_logg), SVector(_mist_Teff)),
-                      repack_submatrix(submatrix, length(_mist_logg), length(_mist_Teff), filters),
+    itp = interpolate((SVector(_mist_v1_logg), SVector(_mist_v1_Teff)),
+                      repack_submatrix(submatrix, length(_mist_v1_logg), length(_mist_v1_Teff), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
     return MISTBCTablev1(feh, Av, itp, filters)

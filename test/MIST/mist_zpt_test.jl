@@ -1,8 +1,9 @@
 using BolometricCorrections
-zpt = BolometricCorrections.MIST.zpt # Constant instance of BolometricCorrections.MIST.MISTZeropoints
 using TypedTables: Table
-
 using Test
+
+const zpt = BolometricCorrections.MIST.zpt # Constant instance of BolometricCorrections.MIST.MISTZeropoints
+
 
 @test Table(zpt) == zpt.table
 @test zpt("WISE_W1") isa NamedTuple
@@ -16,20 +17,44 @@ using Test
 @test Mbol(zpt) isa Number
 @test Lbol(zpt) isa Number
 
-grid = MISTBCGrid("JWST")
-table1 = grid(-1.01, 0.01)
-@test zeropoints(grid) === zpt
-@test zeropoints(table1) === zpt
+@testset "v1" begin
+    grid = MISTBCGridv1("JWST")
+    table1 = grid(-1.01, 0.01)
+    @test zeropoints(grid) === zpt
+    @test zeropoints(table1) === zpt
 
-@test gridname(MISTBCGridv1) isa String
-@test gridname(grid) isa String
-@test gridname(MISTBCTablev1) isa String
-@test gridname(table1) isa String
+    @test gridname(MISTBCGridv1) isa String
+    @test gridname(grid) isa String
+    @test gridname(MISTBCTablev1) isa String
+    @test gridname(table1) isa String
 
-for feh in range(extrema(BolometricCorrections.MIST.gridinfo.feh)...; step=0.1)
-    for Av in range(extrema(BolometricCorrections.MIST.gridinfo.Av)...; step=0.1)
-        table = grid(feh, Av)
-        @test table isa MISTBCTablev1
-        @test table(3000, 1.0) isa AbstractVector # technically SVector but ...
+    for feh in range(extrema(BolometricCorrections.MIST.gridinfov1.feh)...; step=0.1)
+        for Av in range(extrema(BolometricCorrections.MIST.gridinfov1.Av)...; step=0.1)
+            table = grid(feh, Av)
+            @test table isa MISTBCTablev1
+            @test table(3000, 1.0) isa AbstractVector # technically SVector but ...
+        end
+    end
+end
+
+@testset "v2" begin
+    grid = MISTBCGridv2("JWST")
+    table1 = grid(-1.01, 0.0, 0.01)
+    @test zeropoints(grid) === zpt
+    @test zeropoints(table1) === zpt
+
+    @test gridname(MISTBCGridv2) isa String
+    @test gridname(grid) isa String
+    @test gridname(MISTBCTablev2) isa String
+    @test gridname(table1) isa String
+
+    for feh in range(extrema(BolometricCorrections.MIST.gridinfov2.feh)...; step=0.1)
+        for Av in range(extrema(BolometricCorrections.MIST.gridinfov2.Av)...; step=0.1)
+            for afe in range(extrema(BolometricCorrections.MIST.gridinfov2.afe)...; step=0.1)
+                table = grid(feh, afe, Av)
+                @test table isa MISTBCTablev2
+                @test table(3000, 1.0) isa AbstractVector # technically SVector but ...
+            end
+        end
     end
 end

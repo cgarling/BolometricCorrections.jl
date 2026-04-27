@@ -34,7 +34,6 @@ const gridinfov2 = (lgTef = _mist_v2_lgTef,
                     afe   = _mist_v2_afe,
                     Av    = _mist_v2_Av,
                     Rv    = _mist_v2_Rv)
-@compat public gridinfov2
 
 ######################################
 # MIST v2.5 validation and table I/O
