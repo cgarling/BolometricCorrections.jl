@@ -13,7 +13,7 @@ using TypedTables: Table
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, AbstractMassLoss
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
@@ -256,7 +256,8 @@ gridname(::Type{<:WMbasicYBCTable}) = "YBC-WMbasic"
 # zeropoints(table::WMbasicYBCTable) = table.mag_zpt
 chemistry(::Type{<:WMbasicYBCTable}) = PARSECChemistry()
 MH(t::WMbasicYBCTable) = t.MH
-Z(t::WMbasicYBCTable) = Z(chemistry(t), MH(t))
+FeH(t::WMbasicYBCTable) = t.MH
+alphaFe(t::WMbasicYBCTable) = zero(t.MH)
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast

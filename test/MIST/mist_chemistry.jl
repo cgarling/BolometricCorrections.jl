@@ -1,4 +1,4 @@
-using BolometricCorrections.MIST: MISTv1Chemistry, MISTv2Chemistry, MISTv1BCGrid, MISTv2BCGrid, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
+using BolometricCorrections.MIST: MISTv1Chemistry, MISTv2Chemistry, MISTv1BCGrid, MISTv2BCGrid, X, X_phot, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, chemistry, alpha_mass_fraction
 using Test: @test, @testset
 
 # Presently the MIST chemistry is a little wonky because the Asplund protostellar abundances
@@ -22,6 +22,8 @@ using Test: @test, @testset
     for feh in range(extrema(grid).feh...; step=10)
         table = grid(feh, 0.0)
         @test MH(table) == feh
+        @test FeH(table) == feh
+        @test alphaFe(table) == 0
         tchem = chemistry(table)
         @test Z(table) ≈ Z(tchem, MH(table))
         @test Y(table) ≈ Y(tchem, Z(table))
@@ -44,7 +46,10 @@ end
     for feh in range(extrema(grid).feh...; step=10)
         for afe in (-0.2, 0.0) # [α/Fe]
             table = grid(feh, afe, 0.0)
-            @test MH(table) == feh
+            @test FeH(table) == feh
+            @test alphaFe(table) == afe
+            f_alpha = alpha_mass_fraction(chemistry(table))
+            @test MH(table) ≈ feh + log10(f_alpha * exp10(alphaFe(table)) + (1 - f_alpha))
             tchem = chemistry(table)
             @test Z(table) ≈ Z(tchem, MH(table))
             @test Y(table) ≈ Y(tchem, Z(table))

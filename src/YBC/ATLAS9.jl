@@ -11,7 +11,7 @@ using StaticArrays: SVector
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
@@ -195,7 +195,8 @@ filternames(table::ATLAS9YBCTable) = table.filters
 gridname(::Type{<:ATLAS9YBCTable}) = "YBC-ATLAS9"
 # zeropoints(table::ATLAS9YBCTable) = table.mag_zpt
 MH(t::ATLAS9YBCTable) = t.MH
-Z(t::ATLAS9YBCTable) = Z(chemistry(t), MH(t))
+FeH(t::ATLAS9YBCTable) = t.MH
+alphaFe(t::ATLAS9YBCTable) = zero(t.MH)
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast
@@ -323,6 +324,9 @@ Y_phot(::ATLAS9Chemistry) = 0.248
 Y_p(::ATLAS9Chemistry) = missing # not defined
 Z(::ATLAS9Chemistry) = 0.017
 Z_phot(::ATLAS9Chemistry) = 0.017
+# f_alpha computed from Grevesse & Sauval (1998) Table 1 alpha-element mass contributions
+# Alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+alpha_mass_fraction(::ATLAS9Chemistry) = 0.6911
 Y(mix::ATLAS9Chemistry, Zval) = Y(mix) # Constant Y with changing Z, dY/dZ = 0
 MH(mix::ATLAS9Chemistry, Zval) = log10((Zval / X(mix, Zval)) * (X_phot(mix) / Z_phot(mix)))
 Z(mix::ATLAS9Chemistry, MHval) = (1 - Y(mix)) / (X(mix) / (exp10(MHval) * Z(mix)) + 1)

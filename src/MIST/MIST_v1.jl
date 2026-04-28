@@ -183,7 +183,7 @@ Base.extrema(::Type{<:MISTv1BCGrid}) = (Teff = (first(gridinfov1.Teff), last(gri
                                         Av   = (first(gridinfov1.Av),   last(gridinfov1.Av)),
                                         Rv   = (first(gridinfov1.Rv),   last(gridinfov1.Rv)))
 filternames(grid::MISTv1BCGrid) = columnnames(grid)[length(_mist_v1_dependents)+1:end]
-gridname(::Type{<:MISTv1BCGrid}) = "MIST"
+gridname(::Type{<:MISTv1BCGrid}) = "MISTv1"
 zeropoints(::MISTv1BCGrid) = zpt
 chemistry(::Type{<:MISTv1BCGrid}) = MISTv1Chemistry()
 
@@ -209,13 +209,14 @@ Base.show(io::IO, z::MISTv1BCTable) =
     print(io, "MIST v1.2 bolometric correction table with [Fe/H] ", z.feh,
           " and V-band extinction ", z.Av)
 filternames(table::MISTv1BCTable) = table.filters
-gridname(::Type{<:MISTv1BCTable}) = "MIST"
+gridname(::Type{<:MISTv1BCTable}) = "MISTv1"
 zeropoints(::MISTv1BCTable) = zpt
 Base.extrema(::Type{<:MISTv1BCTable}) =
     (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
      logg = (first(gridinfov1.logg), last(gridinfov1.logg)))
+FeH(t::MISTv1BCTable) = t.feh
 MH(t::MISTv1BCTable) = t.feh
-Z(t::MISTv1BCTable) = Z(chemistry(t), MH(t))
+alphaFe(t::MISTv1BCTable) = zero(t.feh)
 chemistry(::Type{<:MISTv1BCTable}) = MISTv1Chemistry()
 
 """
@@ -321,6 +322,9 @@ Y_phot(::MISTv1Chemistry) = 0.2485
 Y_p(::MISTv1Chemistry) = 0.249
 Z(::MISTv1Chemistry) = 0.0142 / 0.9999
 Z_phot(::MISTv1Chemistry) = 0.0134
+# f_alpha computed from Asplund (2009) Table 4 (protostellar) alpha-element mass contributions
+# Alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+alpha_mass_fraction(::MISTv1Chemistry) = 0.6803
 function Y(mix::MISTv1Chemistry, Zval)
     yp = Y_p(mix)
     return yp + ((Y(mix) - yp) / Z(mix)) * Zval

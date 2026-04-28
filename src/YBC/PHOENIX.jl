@@ -7,7 +7,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, FeH, alphaFe, alpha_mass_fraction, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTv1Chemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTv1Chemistry
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
@@ -30,6 +30,8 @@ const _Av = (0, 0.5, 1, 2, 5, 10, 20) # Mix of float and integer makes parsing F
 # const _Av = ["0.5", "1", "2", "5", "10", "20"]
 """ Unique values of [M/H] for the PHOENIX BT-Settl models. """
 const _mh = dtype[-4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, -0.0, 0.3, 0.5]
+""" [α/Fe] value associated with each entry in `_mh` in the PHOENIX BT-Settl models. """
+const _afe = dtype[0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2, 0.0, 0.0, 0.0]
 const _logTeff = range(convert(dtype, 3.41), convert(dtype, 4.85); step=convert(dtype, 0.01))
 const _logg = range(convert(dtype, -0.5), convert(dtype, 6.0); step=convert(dtype, 0.5))
 
@@ -235,7 +237,21 @@ filternames(table::PHOENIXYBCTable) = table.filters
 gridname(::Type{<:PHOENIXYBCTable}) = "YBC-PHOENIX"
 # zeropoints(table::PHOENIXYBCTable) = table.mag_zpt
 MH(t::PHOENIXYBCTable) = t.MH
-Z(t::PHOENIXYBCTable) = Z(chemistry(t), MH(t))
+function alphaFe(t::PHOENIXYBCTable)
+    mh = t.MH
+    mh_idx = searchsortedfirst(_mh, mh)
+    mh_idx = clamp(mh_idx, 1, length(_mh))
+    if _mh[mh_idx] ≈ mh
+        return _afe[mh_idx]
+    elseif mh_idx == 1
+        return _afe[1]
+    else
+        # Linear interpolation
+        mh1, mh2 = _mh[mh_idx - 1], _mh[mh_idx]
+        afe1, afe2 = _afe[mh_idx - 1], _afe[mh_idx]
+        return (afe1 * (mh2 - mh) + afe2 * (mh - mh1)) / (mh2 - mh1)
+    end
+end
 
 # Interpolations uses `bounds` to return interpolation domain
 # We will just use the hard-coded grid bounds; extremely fast

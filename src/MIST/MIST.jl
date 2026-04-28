@@ -7,7 +7,7 @@ module MIST
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
                                interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                Y, Y_phot, Z, Z_phot, MH, chemistry, gridname
+                                Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs
@@ -29,7 +29,7 @@ using Unicode: normalize # To normalize string arguments
 export MISTv1BCGrid, MISTv1BCTable, MISTv2BCGrid, MISTv2BCTable,
        MISTBCGrid, MISTBCTable,  # deprecated aliases for v1 types
        MISTChemistry, MISTv1Chemistry, MISTv2Chemistry,
-       X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH
+       X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, FeH, alphaFe, alpha_mass_fraction
 
 "`NTuple{5, Symbol}` listing the dependent variables in the MIST v1.2 BC grid."
 const _mist_v1_dependents = (:Teff, :logg, :feh, :Av, :Rv)

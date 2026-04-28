@@ -181,6 +181,51 @@ getproperties(table::AbstractBCTable, names::Tuple{Vararg{Symbol}}) = getpropert
 Returns a `NTuple{N, Symbol}` containing the names of the photometric filters contained in the provided bolometric correction table. See `columnnames` if you also want to retrieve names of dependent variable columns.
 """
 function filternames(::AbstractBCTable) end
+"""
+    FeH(table::AbstractBCTable)
+Returns the iron abundance \\[Fe/H\\] of the bolometric correction table.
+For grids with scaled-solar compositions, this is equivalent to [`MH`](@ref).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[Fe/H\\] 
+from [`MH`](@ref) and [`alphaFe`](@ref).
+"""
+function FeH(table::AbstractBCTable)
+    afe = alphaFe(table)
+    f_α = alpha_mass_fraction(chemistry(table))
+    return MH(table) - log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    alphaFe(table::AbstractBCTable)
+Returns the \\[α/Fe\\] enhancement of the bolometric correction table.
+Returns zero for grids with scaled-solar compositions.
+"""
+function alphaFe(table::AbstractBCTable) end
+"""
+    MH(table::AbstractBCTable)
+Returns the total metallicity \\[M/H\\] of the bolometric correction table.
+For grids with scaled-solar compositions, this is equivalent to [`FeH`](@ref).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\] 
+from [`FeH`](@ref) and [`alphaFe`](@ref).
+"""
+function MH(table::AbstractBCTable)
+    afe = alphaFe(table)
+    f_α = alpha_mass_fraction(chemistry(table))
+    return FeH(table) + log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    X(table::AbstractBCTable)
+Returns the hydrogen mass fraction ``X`` of the bolometric correction table.
+"""
+X(table::AbstractBCTable) = X(chemistry(table), Z(table))
+"""
+    Y(table::AbstractBCTable)
+Returns the helium mass fraction ``Y`` of the bolometric correction table.
+"""
+Y(table::AbstractBCTable) = Y(chemistry(table), Z(table))
+"""
+    Z(table::AbstractBCTable)
+Returns the metal mass fraction ``Z`` of the bolometric correction table.
+"""
+Z(t::AbstractBCTable) = Z(chemistry(t), MH(t))
 
 #########################################
 # Zeropoint definition and conversion API
@@ -256,24 +301,15 @@ Base.Broadcast.broadcastable(t::AbstractChemicalMixture) = Ref(t)
 
 """
     chemistry(mix::AbstractBCTable)
-    chemistry(mix::AbstractBCGrid)
 Returns the correct concrete instance of `AbstractChemicalMixture` for the
-provided bolometric correction grid or table. This provides a convenient 
-programmatic way to obtain this chemical information.
-
-```jldoctest
-julia> grid = MISTv1BCGrid("JWST");
-
-julia> chemistry(grid)
-BolometricCorrections.MIST.MISTv1Chemistry()
-
-julia> table = grid(-1.5, 0.03);
-
-julia> chemistry(table)
-BolometricCorrections.MIST.MISTv1Chemistry()
-```
+provided bolometric correction table.
 """
 chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
+"""
+    chemistry(mix::AbstractBCGrid)
+Returns the correct concrete instance of `AbstractChemicalMixture` for the
+provided bolometric correction grid.
+"""
 chemistry(mix::AbstractBCGrid) = chemistry(typeof(mix))
 # ↑ generics that call to chemistry(::Type{<:NewType}) which can often be simple
 
@@ -343,6 +379,15 @@ Returns the **protostellar** logarithmic metallicity [M/H] = log10(Z/X) - log10(
 given the metal mass fraction `Z` and the provided chemical mixture.
 """
 function MH(mix::AbstractChemicalMixture, Z) end
+"""
+    alpha_mass_fraction(mix::AbstractChemicalMixture)
+Returns the solar mass fraction of α-elements relative to total solar metals
+for the given chemical mixture model. Used to convert between \\[M/H\\] and
+\\[Fe/H\\] via the relation
+\\[M/H\\] = \\[Fe/H\\] + log10(`alpha_mass_fraction` × 10^\\[α/Fe\\] + (1 - `alpha_mass_fraction`))
+(see [Salaris1993](@cite)).
+"""
+function alpha_mass_fraction(mix::AbstractChemicalMixture) end
 # function Z(mix::T) where T <: AbstractChemicalMixture
 #     @warn "Requested solar protostellar metal mass for chemical mixture model $T. This model does not have a `Z` method implemented, so we are falling back to the photospheric metal mass fraction `Z_phot(mix)`." maxlog=1
 #     return Z_phot(mix) # Fallback for unimplemented Z
@@ -412,7 +457,7 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 #################################
 # Top-level API exports
 export Table, columnnames, columns, getproperties, gridname, filternames, zeropoints, vegamags,
-    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
+    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry
 
 # Include submodules
 include(joinpath("MIST", "MIST.jl"))

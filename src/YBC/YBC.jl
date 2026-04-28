@@ -2,7 +2,7 @@ module YBC
 
 # using ..BolometricCorrections: @compat
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -150,6 +150,9 @@ Z(::PARSECChemistry) = 0.01774 # Z_initial in Table 3 of Bressan2012
 Z_phot(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
 # Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
 Y_p(::PARSECChemistry) = 0.2485
+# f_alpha computed from Bressan (2012) abundance mixture: GS98 for most elements,
+# Caffau (2011) for C, N, O, Ne, Ar (see §4 of Bressan 2012); alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+alpha_mass_fraction(::PARSECChemistry) = 0.6763
 
 Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 178//100 * Zval # γ = 1.78
 # X generic
@@ -356,7 +359,8 @@ gridname(::Type{<:YBCTable}) = "YBC"
 # zeropoints(table::YBCTable) = table.mag_zpt
 chemistry(::Type{<:YBCTable}) = PARSECChemistry()
 MH(t::YBCTable) = t.MH
-Z(t::YBCTable) = Z(chemistry(t), MH(t))
+FeH(t::YBCTable) = t.MH
+alphaFe(t::YBCTable) = zero(t.MH)
 function Base.extrema(::Type{<:YBCTable})
     ex = _ybc_extrema
     return (Teff = ex.Teff, logg = ex.logg, Mdot = ex.Mdot)
