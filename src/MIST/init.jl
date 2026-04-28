@@ -29,17 +29,6 @@ function parse_mist_header(fname::AbstractString)
     end
 end
 
-function parse_mist_v2_header(fname::AbstractString)
-    for (linenum, line) in enumerate(eachline(fname))
-        if linenum == 4
-            # Header line: "# lgTef  logg  Fe_H a_Fe   Av   Rv  <filters...>"
-            # Split on last dependent (Rv) to isolate filter names
-            header = filter(!isempty, split(split(line, string(last(_mist_v2_dependents)))[2], ' '))
-            return vcat(SVector(string.(_mist_v2_dependents)), convert(Vector{String}, header))
-        end
-    end
-end
-
 # Get [Fe/H] from name of MIST BC file
 function mist_feh(fname::AbstractString)
     fname = basename(fname) # Get file name part of path
@@ -48,16 +37,6 @@ function mist_feh(fname::AbstractString)
         feh *= -1
     end
     return feh
-end
-
-# Get [Fe/H] and [α/Fe] from name of MIST v2.5 BC file
-# Format: feh+0.00_afe+0.0.GALEX
-function mist_v2_feh_afe(fname::AbstractString)
-    fname = basename(fname)
-    m = match(r"feh([+-][0-9.]+)_afe([+-][0-9.]+)\.", fname)
-    feh = parse(Float64, m[1])
-    afe = parse(Float64, m[2])
-    return (feh, afe)
 end
 
 function custom_unpack(fname::AbstractString) # Path to datadep
@@ -117,6 +96,27 @@ function custom_unpack(fname::AbstractString) # Path to datadep
     # end
     # HDF5.close(fid)
     
+end
+
+function parse_mist_v2_header(fname::AbstractString)
+    for (linenum, line) in enumerate(eachline(fname))
+        if linenum == 4
+            # Header line: "# lgTef  logg  Fe_H a_Fe   Av   Rv  <filters...>"
+            # Split on last dependent (Rv) to isolate filter names
+            header = filter(!isempty, split(split(line, string(last(_mist_v2_dependents)))[2], ' '))
+            return vcat(SVector(string.(_mist_v2_dependents)), convert(Vector{String}, header))
+        end
+    end
+end
+
+# Get [Fe/H] and [α/Fe] from name of MIST v2.5 BC file
+# Format: feh+0.00_afe+0.0.GALEX
+function mist_v2_feh_afe(fname::AbstractString)
+    fname = basename(fname)
+    m = match(r"feh([+-][0-9.]+)_afe([+-][0-9.]+)\.", fname)
+    feh = parse(Float64, m[1])
+    afe = parse(Float64, m[2])
+    return (feh, afe)
 end
 
 function custom_unpack_v2(fname::AbstractString) # Path to datadep
