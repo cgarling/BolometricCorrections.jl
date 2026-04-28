@@ -311,14 +311,15 @@ function MISTBCTablev2(grid::MISTBCGridv2, feh::Real, afe::Real, Av::Real)
             submatrix = interp1d(Av, Av1, Av2, m_f_a_1, m_f_a_2)
         end
     end
-    itp = interpolate((SVector(_mist_v2_lgTef), SVector(_mist_v2_logg)),
-                      repack_submatrix(submatrix, length(_mist_v2_lgTef), length(_mist_v2_logg), filters),
+    itp = interpolate((SVector(_mist_v2_logg), SVector(exp10.(_mist_v2_lgTef))),
+    # itp = interpolate((SVector(_mist_v2_logg), SVector(_mist_v2_lgTef)),
+                      repack_submatrix(submatrix, length(_mist_v2_logg), length(_mist_v2_lgTef), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
     return MISTBCTablev2(feh, afe, Av, itp, filters)
 end
-# Accept linear Teff in Kelvin, convert to log10 internally
-(table::MISTBCTablev2)(Teff::Real, logg::Real) = table.itp(log10(Teff), logg)
+(table::MISTBCTablev2)(Teff::Real, logg::Real) = table.itp(logg, Teff)
+# (table::MISTBCTablev2)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 
 ###############################################################
 # MIST v2.5 chemical mixture — Grevesse & Sauval (1998) / GS98
@@ -327,10 +328,10 @@ end
 """
     MISTChemistryv2()
 
-Singleton struct representing the MIST v2.5 chemical mixture, based on [Grevesse1998](@cite) solar abundances (in contrast to [Asplund2009](@cite) used in v1.2).
+Singleton struct representing the MIST v2.5 chemical mixture, based on [Grevesse1998](@citet) solar abundances (in contrast to [Asplund2009](@citet) used in v1.2).
 
-Protosolar (initial) values [`X`](@ref), [`Y`](@ref), and [`Z`](@ref) are taken from the solar calibration in Table 1 of [Dotter2026](@cite). Photospheric values are derived from the
-[GS98](@cite Grevesse1998) ratio `(Z/X)_phot = 0.023` and the calibrated surface helium abundance `Ysurf = 0.2482`. The primordial helium abundance [`Y_p`](@ref) is from [PlanckCollaboration2016](@cite).
+Protosolar (initial) values [`X`](@ref), [`Y`](@ref), and [`Z`](@ref) are taken from the solar calibration in Table 1 of [Dotter2026](@citet). Photospheric values are derived from the
+[GS98](@cite Grevesse1998) ratio `(Z/X)_phot = 0.023` and the calibrated surface helium abundance `Ysurf = 0.2482`. The primordial helium abundance [`Y_p`](@ref) is from [PlanckCollaboration2016](@citet).
 """
 struct MISTChemistryv2 <: AbstractChemicalMixture end
 
