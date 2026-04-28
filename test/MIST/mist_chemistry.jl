@@ -1,4 +1,4 @@
-using BolometricCorrections.MIST: MISTChemistryv1, MISTChemistryv2, MISTBCGridv1, MISTBCGridv2, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
+using BolometricCorrections.MIST: MISTv1Chemistry, MISTv2Chemistry, MISTv1BCGrid, MISTv2BCGrid, X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 using Test: @test, @testset
 
 # Presently the MIST chemistry is a little wonky because the Asplund protostellar abundances
@@ -6,9 +6,9 @@ using Test: @test, @testset
 # Fixing this by dividing the table values by 0.9999 to renormalize sum X + Y + Z = 1.
 
 # const rtol = 1e-3
-@testset "MISTChemistryv1" begin
+@testset "MISTv1Chemistry" begin
 
-    chem = MISTChemistryv1()
+    chem = MISTv1Chemistry()
     @test X(chem) + Y(chem) + Z(chem) ≈ 1
     @test X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1
     @test X(chem, Z(chem)) ≈ X(chem)
@@ -18,7 +18,7 @@ using Test: @test, @testset
     @test MH(chem, Z(chem, 0.5)) ≈ 0.5 # rtol=rtol
     @test Z(chem, MH(chem, 1e-2)) ≈ 1e-2 # rtol=rtol
 
-    grid = MISTBCGridv1("JWST")
+    grid = MISTv1BCGrid("JWST")
     for feh in range(extrema(grid).feh...; step=10)
         table = grid(feh, 0.0)
         @test MH(table) == feh
@@ -29,8 +29,8 @@ using Test: @test, @testset
     end
 end
 
-@testset "MISTChemistryv2" begin
-    chem = MISTChemistryv2()
+@testset "MISTv2Chemistry" begin
+    chem = MISTv2Chemistry()
     @test X(chem) + Y(chem) + Z(chem) ≈ 1
     @test X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1
     @test X(chem, Z(chem)) ≈ X(chem) # rtol=rtol
@@ -40,7 +40,7 @@ end
     @test MH(chem, Z(chem, 0.5)) ≈ 0.5 # rtol=rtol
     @test Z(chem, MH(chem, 1e-2)) ≈ 1e-2 # rtol=rtol
 
-    grid = MISTBCGridv2("JWST")
+    grid = MISTv2BCGrid("JWST")
     for feh in range(extrema(grid).feh...; step=10)
         for afe in (-0.2, 0.0) # [α/Fe]
             table = grid(feh, afe, 0.0)

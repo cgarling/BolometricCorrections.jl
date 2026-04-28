@@ -26,9 +26,9 @@ import TypedTables: Table # import to extend
 using TypedTables: columnnames, getproperties, columns
 using Unicode: normalize # To normalize string arguments
 
-export MISTBCGridv1, MISTBCTablev1, MISTBCGridv2, MISTBCTablev2,
+export MISTv1BCGrid, MISTv1BCTable, MISTv2BCGrid, MISTv2BCTable,
        MISTBCGrid, MISTBCTable,  # deprecated aliases for v1 types
-       MISTChemistry, MISTChemistryv1, MISTChemistryv2,
+       MISTChemistry, MISTv1Chemistry, MISTv2Chemistry,
        X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH
 
 "`NTuple{5, Symbol}` listing the dependent variables in the MIST v1.2 BC grid."
@@ -116,8 +116,8 @@ Lbol(::MISTZeropoints) = 3.828e33
 This constant is an instance of [`MISTZeropoints`](@ref BolometricCorrections.MIST.MISTZeropoints).
 See the docs for more informations on supported operations.
 This constant is returned when calling [`zeropoints`](@ref) on instances of MIST grids
-([`MIST.MISTBCGridv1`](@ref), [`MIST.MISTBCGridv2`](@ref)) and tables
-([`MIST.MISTBCTablev1`](@ref), [`MIST.MISTBCTablev2`](@ref)).
+([`MIST.MISTv1BCGrid`](@ref), [`MIST.MISTv2BCGrid`](@ref)) and tables
+([`MIST.MISTv1BCTable`](@ref), [`MIST.MISTv2BCTable`](@ref)).
 
 Each set of bolometric corrections is specified on either the Vega or AB magnitude system.
 For ease of conversion amongst the AB, ST, and Vega systems this table is provided containing
@@ -176,9 +176,9 @@ const gridinfo = (v1 = gridinfov1, v2 = gridinfov2)
 # Deprecated aliases for v1 types
 #################################
 
-@deprecate MISTChemistry() MISTChemistryv1()
-@deprecate MISTBCGrid(grid::AbstractString) MISTBCGridv1(grid)
-@deprecate MISTBCTable(grid::MISTBCGridv1, feh, Av) MISTBCTablev1(grid, feh, Av)
+@deprecate MISTChemistry() MISTv1Chemistry()
+@deprecate MISTBCGrid(grid::AbstractString) MISTv1BCGrid(grid)
+@deprecate MISTBCTable(grid::MISTv1BCGrid, feh, Av) MISTv1BCTable(grid, feh, Av)
 
 
 

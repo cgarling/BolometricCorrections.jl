@@ -77,34 +77,34 @@ function select_subtable_v2(table::Table, feh::Real, afe::Real, Av::Real)
 end
 
 ######################################
-# MISTBCGridv2
+# MISTv2BCGrid
 ######################################
 
 """
-    MISTBCGridv2(grid::AbstractString)
+    MISTv2BCGrid(grid::AbstractString)
 
 Load and return the MIST v2.5 bolometric corrections for the given photometric system `grid`.
-This type is used to create instances of [`MISTBCTablev2`](@ref) with fixed dependent grid
+This type is used to create instances of [`MISTv2BCTable`](@ref) with fixed dependent grid
 variables (\\[Fe/H\\], \\[α/Fe\\], Av). Call an instance with `(feh, afe, Av)` arguments or use
-the [`MISTBCTablev2`](@ref) constructor directly.
+the [`MISTv2BCTable`](@ref) constructor directly.
 
 ```jldoctest
-julia> grid = MISTBCGridv2("JWST")
+julia> grid = MISTv2BCGrid("JWST")
 MIST v2.5 bolometric correction grid for photometric system MIST_JWST_v2.5
 
 julia> grid(-1.01, 0.2, 0.11)
 MIST v2.5 bolometric correction table with [Fe/H] -1.01, [α/Fe] 0.2, and V-band extinction 0.11
 ```
 """
-struct MISTBCGridv2{A, B, C <: AbstractString} <: AbstractBCGrid{A}
+struct MISTv2BCGrid{A, B, C <: AbstractString} <: AbstractBCGrid{A}
     table::B
     filename::C
-    function MISTBCGridv2(table::B, filename::C) where {B, C}
+    function MISTv2BCGrid(table::B, filename::C) where {B, C}
         A = Base.promote_eltype(first(table))
         new{A, B, C}(table, filename)
     end
 end
-function MISTBCGridv2(grid::AbstractString)
+function MISTv2BCGrid(grid::AbstractString)
     if haskey(registry, grid)
         fname = mist_processed_fname(@datadep_str(grid))
     else
@@ -174,75 +174,75 @@ function MISTBCGridv2(grid::AbstractString)
             throw(ArgumentError("Unrecognized grid \"$grid\" for MIST v2.5."))
         end
     end
-    return MISTBCGridv2(read_mist_bc_processed(fname), fname)
+    return MISTv2BCGrid(read_mist_bc_processed(fname), fname)
 end
-(grid::MISTBCGridv2)(feh::Real, afe::Real, Av::Real) = MISTBCTablev2(grid, feh, afe, Av)
-Base.show(io::IO, z::MISTBCGridv2) =
+(grid::MISTv2BCGrid)(feh::Real, afe::Real, Av::Real) = MISTv2BCTable(grid, feh, afe, Av)
+Base.show(io::IO, z::MISTv2BCGrid) =
     print(io, "MIST v2.5 bolometric correction grid for photometric system ",
           splitpath(splitext(z.filename)[1])[end])
-Table(grid::MISTBCGridv2) = grid.table
-Base.extrema(::Type{<:MISTBCGridv2}) =
+Table(grid::MISTv2BCGrid) = grid.table
+Base.extrema(::Type{<:MISTv2BCGrid}) =
     (lgTef = (first(gridinfov2.lgTef), last(gridinfov2.lgTef)),
      logg  = (first(gridinfov2.logg),  last(gridinfov2.logg)),
      feh   = (first(gridinfov2.feh),   last(gridinfov2.feh)),
      afe   = (first(gridinfov2.afe),   last(gridinfov2.afe)),
      Av    = (first(gridinfov2.Av),    last(gridinfov2.Av)),
      Rv    = (first(gridinfov2.Rv),    last(gridinfov2.Rv)))
-filternames(grid::MISTBCGridv2) = columnnames(grid)[length(_mist_v2_dependents)+1:end]
-gridname(::Type{<:MISTBCGridv2}) = "MIST"
-zeropoints(::MISTBCGridv2) = zpt
-chemistry(::Type{<:MISTBCGridv2}) = MISTChemistryv2()
+filternames(grid::MISTv2BCGrid) = columnnames(grid)[length(_mist_v2_dependents)+1:end]
+gridname(::Type{<:MISTv2BCGrid}) = "MIST"
+zeropoints(::MISTv2BCGrid) = zpt
+chemistry(::Type{<:MISTv2BCGrid}) = MISTv2Chemistry()
 
 ######################################
-# MISTBCTablev2
+# MISTv2BCTable
 ######################################
 
 """
-    MISTBCTablev2
+    MISTv2BCTable
 
 A MIST v2.5 bolometric correction table with fixed \\[Fe/H\\], \\[α/Fe\\], and ``A_V``.
 Callable with `(Teff [K], logg [cgs])` to interpolate BCs.
 """
-struct MISTBCTablev2{A <: Real, B, N} <: AbstractBCTable{A}
+struct MISTv2BCTable{A <: Real, B, N} <: AbstractBCTable{A}
     feh::A
     afe::A
     Av::A
     itp::B
     filters::Tuple{Vararg{Symbol, N}}
 end
-MISTBCTablev2(feh::Real, afe::Real, Av::Real, itp, filters) =
-    MISTBCTablev2(promote(feh, afe, Av)..., itp, filters)
-Base.show(io::IO, z::MISTBCTablev2) =
+MISTv2BCTable(feh::Real, afe::Real, Av::Real, itp, filters) =
+    MISTv2BCTable(promote(feh, afe, Av)..., itp, filters)
+Base.show(io::IO, z::MISTv2BCTable) =
     print(io, "MIST v2.5 bolometric correction table with [Fe/H] ", z.feh,
           ", [α/Fe] ", z.afe, ", and V-band extinction ", z.Av)
-filternames(table::MISTBCTablev2) = table.filters
-gridname(::Type{<:MISTBCTablev2}) = "MIST"
-zeropoints(::MISTBCTablev2) = zpt
-Base.extrema(::Type{<:MISTBCTablev2}) =
+filternames(table::MISTv2BCTable) = table.filters
+gridname(::Type{<:MISTv2BCTable}) = "MIST"
+zeropoints(::MISTv2BCTable) = zpt
+Base.extrema(::Type{<:MISTv2BCTable}) =
     (Teff = (10^first(gridinfov2.lgTef), 10^last(gridinfov2.lgTef)),
      logg = (first(gridinfov2.logg), last(gridinfov2.logg)))
-MH(t::MISTBCTablev2) = t.feh
-Z(t::MISTBCTablev2) = Z(chemistry(t), MH(t))
-chemistry(::Type{<:MISTBCTablev2}) = MISTChemistryv2()
+MH(t::MISTv2BCTable) = t.feh
+Z(t::MISTv2BCTable) = Z(chemistry(t), MH(t))
+chemistry(::Type{<:MISTv2BCTable}) = MISTv2Chemistry()
 
 """
-    MISTBCTablev2(grid::MISTBCGridv2, feh::Real, afe::Real, Av::Real)
+    MISTv2BCTable(grid::MISTv2BCGrid, feh::Real, afe::Real, Av::Real)
 
 Interpolate the MIST v2.5 BCs in `grid` to fixed \\[Fe/H\\] (`feh`), \\[α/Fe\\] (`afe`),
 and ``A_V`` (`Av`). Returns an instance callable with `(Teff [K], logg [cgs])`.
 
 ```jldoctest
-julia> grid = MISTBCGridv2("GALEX")
+julia> grid = MISTv2BCGrid("GALEX")
 MIST v2.5 bolometric correction grid for photometric system MIST_GALEX_v2.5
 
-julia> table = MISTBCTablev2(grid, -1.0, 0.2, 0.0)
+julia> table = MISTv2BCTable(grid, -1.0, 0.2, 0.0)
 MIST v2.5 bolometric correction table with [Fe/H] -1.0, [α/Fe] 0.2, and V-band extinction 0.0
 
 julia> length(table(5500, 4.5)) == 2
 true
 ```
 """
-function MISTBCTablev2(grid::MISTBCGridv2, feh::Real, afe::Real, Av::Real)
+function MISTv2BCTable(grid::MISTv2BCGrid, feh::Real, afe::Real, Av::Real)
     check_vals_v2(feh, afe, Av)
     filters = filternames(grid)
     table = Table(grid)
@@ -316,41 +316,41 @@ function MISTBCTablev2(grid::MISTBCGridv2, feh::Real, afe::Real, Av::Real)
                       repack_submatrix(submatrix, length(_mist_v2_logg), length(_mist_v2_lgTef), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
-    return MISTBCTablev2(feh, afe, Av, itp, filters)
+    return MISTv2BCTable(feh, afe, Av, itp, filters)
 end
-(table::MISTBCTablev2)(Teff::Real, logg::Real) = table.itp(logg, Teff)
-# (table::MISTBCTablev2)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
+(table::MISTv2BCTable)(Teff::Real, logg::Real) = table.itp(logg, Teff)
+# (table::MISTv2BCTable)(Teff::Real, logg::Real) = table.itp(logg, log10(Teff))
 
 ###############################################################
 # MIST v2.5 chemical mixture — Grevesse & Sauval (1998) / GS98
 ###############################################################
 
 """
-    MISTChemistryv2()
+    MISTv2Chemistry()
 
 Singleton struct representing the MIST v2.5 chemical mixture, based on [Grevesse1998](@citet) solar abundances (in contrast to [Asplund2009](@citet) used in v1.2).
 
 Protosolar (initial) values [`X`](@ref), [`Y`](@ref), and [`Z`](@ref) are taken from the solar calibration in Table 1 of [Dotter2026](@citet). Photospheric values are derived from the
 [GS98](@cite Grevesse1998) ratio `(Z/X)_phot = 0.023` and the calibrated surface helium abundance `Ysurf = 0.2482`. The primordial helium abundance [`Y_p`](@ref) is from [PlanckCollaboration2016](@citet).
 """
-struct MISTChemistryv2 <: AbstractChemicalMixture end
+struct MISTv2Chemistry <: AbstractChemicalMixture end
 
-X(::MISTChemistryv2)      = 0.7080          # Xinitial from Table 1, Dotter+2026
-X_phot(::MISTChemistryv2) = 0.7518 / 1.023  # derived from GS98 (Z/X)=0.023, Ysurf=0.2482
-Y(::MISTChemistryv2)      = 0.2735          # Yinitial
-Y_phot(::MISTChemistryv2) = 0.2482          # Ysurf from Table 1, Basu 2004
-Y_p(::MISTChemistryv2)    = 0.249           # Planck 2016
-Z(::MISTChemistryv2)      = 0.0185          # Zinitial
-Z_phot(::MISTChemistryv2) = 0.023 * (0.7518 / 1.023)  # ≈ 0.01690
-function Y(mix::MISTChemistryv2, Zval)
+X(::MISTv2Chemistry)      = 0.7080          # Xinitial from Table 1, Dotter+2026
+X_phot(::MISTv2Chemistry) = 0.7518 / 1.023  # derived from GS98 (Z/X)=0.023, Ysurf=0.2482
+Y(::MISTv2Chemistry)      = 0.2735          # Yinitial
+Y_phot(::MISTv2Chemistry) = 0.2482          # Ysurf from Table 1, Basu 2004
+Y_p(::MISTv2Chemistry)    = 0.249           # Planck 2016
+Z(::MISTv2Chemistry)      = 0.0185          # Zinitial
+Z_phot(::MISTv2Chemistry) = 0.023 * (0.7518 / 1.023)  # ≈ 0.01690
+function Y(mix::MISTv2Chemistry, Zval)
     yp = Y_p(mix)
     return yp + ((Y(mix) - yp) / Z(mix)) * Zval
 end
-function MH(mix::MISTChemistryv2, Zval)
+function MH(mix::MISTv2Chemistry, Zval)
     Xval = X(mix, Zval)
     return log10((Zval / Xval) * (X(mix) / Z(mix)))
 end
-function Z(mix::MISTChemistryv2, MHval)
+function Z(mix::MISTv2Chemistry, MHval)
     solX, solY, solZ, yp = X(mix), Y(mix), Z(mix), Y_p(mix)
     zoverx = exp10(MHval + log10(solZ/solX))
     return zoverx * (1 - yp) / (1 + zoverx + zoverx * ((solY - yp) / solZ))

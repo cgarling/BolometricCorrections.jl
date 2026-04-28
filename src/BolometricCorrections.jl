@@ -28,8 +28,8 @@ without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, 
 # Bolometric correction grid API
 
 """ `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. Generally, concrete subtypes should be callable with population properties (e.g., metallicity, reddening, etc.) to interpolate the full grid to these properties, returning a concrete subtype of [`BolometricCorrections.AbstractBCTable`](@ref). As different grids will have different population properties available (e.g., some support different α-element abundances in addition to total metallicity), the call signature to interpolate the grid is specific for each concrete subtype, which include
- - [`MISTBCGridv1`](@ref)
- - [`MISTBCGridv2`](@ref)
+ - [`MISTv1BCGrid`](@ref)
+ - [`MISTv2BCGrid`](@ref)
  - [`PHOENIXYBCGrid`](@ref)
  - [`ATLAS9YBCGrid`](@ref)
 """
@@ -93,7 +93,7 @@ Tables may also be called with a single argument (usually a `NamedTuple`) which 
 
     (table::AbstractTable)(arg)
 
-We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTablev1`](@ref)).
+We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTv1BCTable`](@ref)).
 
     (table::AbstractBCTable)([::Type{TypedTables.Table},]
                              args::Vararg{AbstractArray{<:Real}, N}) where {N}
@@ -198,7 +198,7 @@ Return the correct concrete instance of [`AbstractZeropoints`](@ref BolometricCo
 for the type of `grid` or `table`.
 
 ```jldoctest
-julia> zeropoints(MISTBCGridv1("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
+julia> zeropoints(MISTv1BCGrid("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
 true
 ```
 """
@@ -262,15 +262,15 @@ provided bolometric correction grid or table. This provides a convenient
 programmatic way to obtain this chemical information.
 
 ```jldoctest
-julia> grid = MISTBCGridv1("JWST");
+julia> grid = MISTv1BCGrid("JWST");
 
 julia> chemistry(grid)
-BolometricCorrections.MIST.MISTChemistryv1()
+BolometricCorrections.MIST.MISTv1Chemistry()
 
 julia> table = grid(-1.5, 0.03);
 
 julia> chemistry(table)
-BolometricCorrections.MIST.MISTChemistryv1()
+BolometricCorrections.MIST.MISTv1Chemistry()
 ```
 """
 chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
@@ -418,7 +418,7 @@ export Table, columnnames, columns, getproperties, gridname, filternames, zeropo
 include(joinpath("MIST", "MIST.jl"))
 using .MIST
 @compat public MIST
-export MISTBCGrid, MISTBCTable, MISTBCGridv1, MISTBCTablev1, MISTBCGridv2, MISTBCTablev2
+export MISTBCGrid, MISTBCTable, MISTv1BCGrid, MISTv1BCTable, MISTv2BCGrid, MISTv2BCTable
 
 include(joinpath("YBC", "YBC.jl"))
 using .YBC

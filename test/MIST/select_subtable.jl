@@ -4,7 +4,7 @@ import BolometricCorrections.MIST
 
 @testset "v1" begin
     # Test that select_subtable correctly selects rows with feh == feh and Av == Av
-    table = MIST.MISTBCGridv1("JWST")
+    table = MIST.MISTv1BCGrid("JWST")
     for feh in MIST.gridinfov1.feh
         for Av in MIST.gridinfov1.Av
             subtable = MIST.select_subtable_v1(Table(table), feh, Av)
@@ -16,7 +16,7 @@ import BolometricCorrections.MIST
 end
 
 @testset "v2" begin
-    table = MIST.MISTBCGridv2("JWST")
+    table = MIST.MISTv2BCGrid("JWST")
     for feh in MIST.gridinfov2.feh
         for Av in MIST.gridinfov2.Av
             for afe in MIST.gridinfov2.afe

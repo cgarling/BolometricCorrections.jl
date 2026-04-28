@@ -35,12 +35,12 @@ The HST ACS WFC bolometric corrections from the MIST v1.2 grid can be loaded wit
 
 ```julia
 using BolometricCorrections
-grid = MISTBCGridv1("hst_acs_wfc")
+grid = MISTv1BCGrid("hst_acs_wfc")
 ```
 
 If you haven't yet acquired these data, you will be prompted to allow the data to be downloaded and installed.
 
-The MIST v1.2 grid covers a wide range of metallicity and reddening (`Av`) values. We can interpolate the grid at specific values of [Fe/H] and reddening (`Av`), obtaining a `MISTBCTablev1` with
+The MIST v1.2 grid covers a wide range of metallicity and reddening (`Av`) values. We can interpolate the grid at specific values of [Fe/H] and reddening (`Av`), obtaining a `MISTv1BCTable` with
 
 ```julia
 feh, Av = -1.01, 0.125
@@ -77,10 +77,10 @@ bcs = table(Table, [2755, 2756], [0.01, 0.02])
 ```
 ```
 Table with 13 columns and 2 rows:
-     ACS_WFC_F435W  ACS_WFC_F475W  ACS_WFC_F502N  ACS_WFC_F550M  ACS_WFC_F555W  ACS_WFC_F606W  ACS_WFC_F625W  ACS_WFC_F658N  ⋯
-   ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 1 │ -6.79721       -5.9089        -6.67736       -4.90698       -5.21007       -4.28292       -3.98601       -3.32683       ⋯
- 2 │ -6.77482       -5.88998       -6.65945       -4.88979       -5.19314       -4.2692        -3.973         -3.31317       ⋯
+     ACS_WFC_F435W  ACS_WFC_F475W  ACS_WFC_F502N  ACS_WFC_F550M  ACS_WFC_F555W  ACS_WFC_F606W  ACS_WFC_F625W  ⋯
+   ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 1 │ -6.69738       -5.82358       -6.59423       -4.8335        -5.13368       -4.21906       -3.92446       ⋯
+ 2 │ -6.67498       -5.80464       -6.57631       -4.81631       -5.11675       -4.20532       -3.91145       ⋯
  ```
 
 so that the results can be more conveniently accessed with the following syntax
@@ -95,7 +95,7 @@ The MIST v2.5 grid adds \[α/Fe\] as a free parameter. Load and use it in the sa
 
 ```julia
 using BolometricCorrections
-grid = MISTBCGridv2("hst_acs_wfc")
+grid = MISTv2BCGrid("hst_acs_wfc")
 feh, afe, Av = -1.01, 0.2, 0.125
 table = grid(feh, afe, Av)
 table(2755, 0.01)

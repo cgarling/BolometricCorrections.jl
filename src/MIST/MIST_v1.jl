@@ -79,34 +79,34 @@ function select_subtable_v1(table::Table, feh::Real, Av::Real)
 end
 
 ######################################
-# MISTBCGridv1
+# MISTv1BCGrid
 ######################################
 
 """
-    MISTBCGridv1(grid::AbstractString)
+    MISTv1BCGrid(grid::AbstractString)
 
 Load and return the MIST v1.2 bolometric corrections for the given photometric system `grid`.
-This type is used to create instances of [`MISTBCTablev1`](@ref) with fixed dependent grid
+This type is used to create instances of [`MISTv1BCTable`](@ref) with fixed dependent grid
 variables (\\[Fe/H\\], Av). Call an instance with `(feh, Av)` or use the
-[`MISTBCTablev1`](@ref) constructor directly.
+[`MISTv1BCTable`](@ref) constructor directly.
 
 ```jldoctest
-julia> grid = MISTBCGridv1("JWST")
+julia> grid = MISTv1BCGrid("JWST")
 MIST v1.2 bolometric correction grid for photometric system MIST_JWST
 
 julia> grid(-1.01, 0.11) # Can be called to construct table with interpolated [Fe/H], Av
 MIST v1.2 bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.11
 ```
 """
-struct MISTBCGridv1{A, B, C <: AbstractString} <: AbstractBCGrid{A}
+struct MISTv1BCGrid{A, B, C <: AbstractString} <: AbstractBCGrid{A}
     table::B # Usually a TypedTables.Table
     filename::C
-    function MISTBCGridv1(table::B, filename::C) where {B, C}
+    function MISTv1BCGrid(table::B, filename::C) where {B, C}
         A = Base.promote_eltype(first(table))
         new{A, B, C}(table, filename)
     end
 end
-function MISTBCGridv1(grid::AbstractString)
+function MISTv1BCGrid(grid::AbstractString)
     if haskey(registry, grid)
         fname = mist_processed_fname(@datadep_str(grid))
     else
@@ -170,65 +170,65 @@ function MISTBCGridv1(grid::AbstractString)
             throw(ArgumentError("Unrecognized grid \"$grid\" for MIST v1.2."))
         end
     end
-    return MISTBCGridv1(read_mist_bc_processed(fname), fname)
+    return MISTv1BCGrid(read_mist_bc_processed(fname), fname)
 end
-(grid::MISTBCGridv1)(feh::Real, Av::Real) = MISTBCTablev1(grid, feh, Av)
-Base.show(io::IO, z::MISTBCGridv1) =
+(grid::MISTv1BCGrid)(feh::Real, Av::Real) = MISTv1BCTable(grid, feh, Av)
+Base.show(io::IO, z::MISTv1BCGrid) =
     print(io, "MIST v1.2 bolometric correction grid for photometric system ",
           splitpath(splitext(z.filename)[1])[end])
-Table(grid::MISTBCGridv1) = grid.table
-Base.extrema(::Type{<:MISTBCGridv1}) = (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
+Table(grid::MISTv1BCGrid) = grid.table
+Base.extrema(::Type{<:MISTv1BCGrid}) = (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
                                         logg = (first(gridinfov1.logg), last(gridinfov1.logg)),
                                         feh  = (first(gridinfov1.feh),  last(gridinfov1.feh)),
                                         Av   = (first(gridinfov1.Av),   last(gridinfov1.Av)),
                                         Rv   = (first(gridinfov1.Rv),   last(gridinfov1.Rv)))
-filternames(grid::MISTBCGridv1) = columnnames(grid)[length(_mist_v1_dependents)+1:end]
-gridname(::Type{<:MISTBCGridv1}) = "MIST"
-zeropoints(::MISTBCGridv1) = zpt
-chemistry(::Type{<:MISTBCGridv1}) = MISTChemistryv1()
+filternames(grid::MISTv1BCGrid) = columnnames(grid)[length(_mist_v1_dependents)+1:end]
+gridname(::Type{<:MISTv1BCGrid}) = "MIST"
+zeropoints(::MISTv1BCGrid) = zpt
+chemistry(::Type{<:MISTv1BCGrid}) = MISTv1Chemistry()
 
 ######################################
-# MISTBCTablev1
+# MISTv1BCTable
 ######################################
 
 """
-    MISTBCTablev1
+    MISTv1BCTable
 
 A MIST v1.2 bolometric correction table with fixed \\[Fe/H\\] and V-band extinction `Av`.
 Callable with arguments `(Teff [K], logg [cgs])` to interpolate BCs.
 """
-struct MISTBCTablev1{A <: Real, B, N} <: AbstractBCTable{A}
+struct MISTv1BCTable{A <: Real, B, N} <: AbstractBCTable{A}
     feh::A
     Av::A
     itp::B
     filters::Tuple{Vararg{Symbol, N}}
 end
-MISTBCTablev1(feh::Real, Av::Real, itp, filters) =
-    MISTBCTablev1(promote(feh, Av)..., itp, filters)
-Base.show(io::IO, z::MISTBCTablev1) =
+MISTv1BCTable(feh::Real, Av::Real, itp, filters) =
+    MISTv1BCTable(promote(feh, Av)..., itp, filters)
+Base.show(io::IO, z::MISTv1BCTable) =
     print(io, "MIST v1.2 bolometric correction table with [Fe/H] ", z.feh,
           " and V-band extinction ", z.Av)
-filternames(table::MISTBCTablev1) = table.filters
-gridname(::Type{<:MISTBCTablev1}) = "MIST"
-zeropoints(::MISTBCTablev1) = zpt
-Base.extrema(::Type{<:MISTBCTablev1}) =
+filternames(table::MISTv1BCTable) = table.filters
+gridname(::Type{<:MISTv1BCTable}) = "MIST"
+zeropoints(::MISTv1BCTable) = zpt
+Base.extrema(::Type{<:MISTv1BCTable}) =
     (Teff = (first(gridinfov1.Teff), last(gridinfov1.Teff)),
      logg = (first(gridinfov1.logg), last(gridinfov1.logg)))
-MH(t::MISTBCTablev1) = t.feh
-Z(t::MISTBCTablev1) = Z(chemistry(t), MH(t))
-chemistry(::Type{<:MISTBCTablev1}) = MISTChemistryv1()
+MH(t::MISTv1BCTable) = t.feh
+Z(t::MISTv1BCTable) = Z(chemistry(t), MH(t))
+chemistry(::Type{<:MISTv1BCTable}) = MISTv1Chemistry()
 
 """
-    MISTBCTablev1(grid::MISTBCGridv1, feh::Real, Av::Real)
+    MISTv1BCTable(grid::MISTv1BCGrid, feh::Real, Av::Real)
 
 Interpolate the MIST v1.2 BCs in `grid` to fixed \\[Fe/H\\] (`feh`) and ``A_V`` (`Av`),
 returning an instance callable with `(Teff [K], logg [cgs])`.
 
 ```jldoctest
-julia> grid = MISTBCGridv1("JWST")
+julia> grid = MISTv1BCGrid("JWST")
 MIST v1.2 bolometric correction grid for photometric system MIST_JWST
 
-julia> table = MISTBCTablev1(grid, -1.01, 0.011)
+julia> table = MISTv1BCTable(grid, -1.01, 0.011)
 MIST v1.2 bolometric correction table with [Fe/H] -1.01 and V-band extinction 0.011
 
 julia> length(table(2755, 0.01)) == 29
@@ -243,7 +243,7 @@ julia> table(Table, [2755, 2756], [0.01, 0.02]) isa Table
 true
 ```
 """
-function MISTBCTablev1(grid::MISTBCGridv1, feh::Real, Av::Real)
+function MISTv1BCTable(grid::MISTv1BCGrid, feh::Real, Av::Real)
     check_vals_v1(feh, Av)
     filters = filternames(grid)
     table = Table(grid)
@@ -280,25 +280,25 @@ function MISTBCTablev1(grid::MISTBCGridv1, feh::Real, Av::Real)
                       repack_submatrix(submatrix, length(_mist_v1_logg), length(_mist_v1_Teff), filters),
                       Gridded(Linear()))
     itp = extrapolate(itp, Flat())
-    return MISTBCTablev1(feh, Av, itp, filters)
+    return MISTv1BCTable(feh, Av, itp, filters)
 end
-(table::MISTBCTablev1)(Teff::Real, logg::Real) = table.itp(logg, Teff)
+(table::MISTv1BCTable)(Teff::Real, logg::Real) = table.itp(logg, Teff)
 
 ##############################
 # Chemical mixture information
 
 """
-    MISTChemistryv1()
+    MISTv1Chemistry()
 Returns a singleton struct representing the MIST v1.2 chemical mixture model.
 MIST v1.2 assumes the *protostellar* [Asplund2009](@citet) solar abundances. Sum of protostellar hydrogen, helium,
 metal mass fractions from last row of Table 4 sums to 0.9999, not 1 as it should.
 To keep calculations consistent, the protostellar values are normalized to sum to 1 here.
 
 ```jldoctest
-julia> using BolometricCorrections.MIST: MISTChemistryv1, X, Y, Z, X_phot, Y_phot, Z_phot,
+julia> using BolometricCorrections.MIST: MISTv1Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot,
                                          MH;
 
-julia> chem = MISTChemistryv1();
+julia> chem = MISTv1Chemistry();
 
 julia> X(chem) + Y(chem) + Z(chem) ≈ 1 # solar protostellar values
 true
@@ -313,19 +313,19 @@ julia> Z(chem, -1.0189881255814277) ≈ Z(chem) * 0.1
 true
 ```
 """
-struct MISTChemistryv1 <: AbstractChemicalMixture end
-X(::MISTChemistryv1) = 0.7154 / 0.9999
-X_phot(::MISTChemistryv1) = 0.7381
-Y(::MISTChemistryv1) = 0.2703 / 0.9999
-Y_phot(::MISTChemistryv1) = 0.2485
-Y_p(::MISTChemistryv1) = 0.249
-Z(::MISTChemistryv1) = 0.0142 / 0.9999
-Z_phot(::MISTChemistryv1) = 0.0134
-function Y(mix::MISTChemistryv1, Zval)
+struct MISTv1Chemistry <: AbstractChemicalMixture end
+X(::MISTv1Chemistry) = 0.7154 / 0.9999
+X_phot(::MISTv1Chemistry) = 0.7381
+Y(::MISTv1Chemistry) = 0.2703 / 0.9999
+Y_phot(::MISTv1Chemistry) = 0.2485
+Y_p(::MISTv1Chemistry) = 0.249
+Z(::MISTv1Chemistry) = 0.0142 / 0.9999
+Z_phot(::MISTv1Chemistry) = 0.0134
+function Y(mix::MISTv1Chemistry, Zval)
     yp = Y_p(mix)
     return yp + ((Y(mix) - yp) / Z(mix)) * Zval
 end
-function MH(mix::MISTChemistryv1, Zval)
+function MH(mix::MISTv1Chemistry, Zval)
     Xval = X(mix, Zval)
     solZ = Z(mix)
     solX = X(mix)
@@ -333,7 +333,7 @@ function MH(mix::MISTChemistryv1, Zval)
     # Fuse expression into one log10 call for efficiency
     return log10((Zval / Xval) * (solX / solZ))
 end
-function Z(mix::MISTChemistryv1, MHval)
+function Z(mix::MISTv1Chemistry, MHval)
     # [M/H] = log(Z/X)-log(Z/X)☉ with Z☉ = solz
     # Z/X = exp10( [M/H] + log(Z/X)☉ )
     # X = 1 - Y - Z

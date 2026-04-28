@@ -5,10 +5,10 @@ The MIST v2.5 BC grid extends the [v1.2 grid](@ref MIST_v1) by introducing \[α/
 ```@example mistv2_plot
 using BolometricCorrections # hide
 include(joinpath(@__DIR__, "..", "plots.jl")) # hide
-grid = MISTBCGridv2("JWST") # hide
+grid = MISTv2BCGrid("JWST") # hide
 feh, afe, Av = -1, 0, 0 # hide
 Teff = logrange(exp10(3.5), 10_000; length=1000) # hide
-# logg = range(extrema(MISTBCGridv2).logg...; length=1000) # hide
+# logg = range(extrema(MISTv2BCGrid).logg...; length=1000) # hide
 logg = range(3.0, 5.0; length=1000) # hide
 table = grid(feh, afe, Av) # hide
 f, ax = plot_bc_table(table, "F090W", Teff, logg) # hide
@@ -20,7 +20,7 @@ f # hide
 and here is the difference between the MIST v1.2 and v2.5 BCs for this filter and metallicity. Over this range of temperature and surface gravity, the v1.2 and v2.5 BCs are very similar.
 
 ```@example mistv2_plot
-grid_v1 = MISTBCGridv1("JWST") # hide
+grid_v1 = MISTv1BCGrid("JWST") # hide
 table_v1 = grid_v1(feh, Av) # hide
 f, ax = plot_bc_table_diff(table_v1, table, ("F090W", "F090W"), Teff, logg) # hide
 ax.title = "MIST v1.2 - v2.5 for JWST/NIRCam F090W" # hide
@@ -30,10 +30,10 @@ f # hide
 
 ## [Chemistry](@id MIST_v2_chemistry)
 
-The MIST v2.5 BC grid uses solar chemical abundances from [Grevesse1998](@citet), in contrast to [Asplund2009](@citet) used in v1.2. Because the grid also gives α-element abundances as a free parameter via \[α/Fe\], the metallicity coordinate \[Fe/H\] is no longer exactly equivalent to \[M/H\]. We provide [`BolometricCorrections.MIST.MISTChemistryv2`](@ref) to access the v2.5 solar abundances following the [chemical mixture API](@ref chemistry_api).
+The MIST v2.5 BC grid uses solar chemical abundances from [Grevesse1998](@citet), in contrast to [Asplund2009](@citet) used in v1.2. Because the grid also gives α-element abundances as a free parameter via \[α/Fe\], the metallicity coordinate \[Fe/H\] is no longer exactly equivalent to \[M/H\]. We provide [`BolometricCorrections.MIST.MISTv2Chemistry`](@ref) to access the v2.5 solar abundances following the [chemical mixture API](@ref chemistry_api).
 
 ```@docs
-BolometricCorrections.MIST.MISTChemistryv2
+BolometricCorrections.MIST.MISTv2Chemistry
 ```
 
 The full range of dependent variables covered by this grid is given in the table below.
@@ -61,10 +61,10 @@ keys(BolometricCorrections.MIST.gridinfov2)
 ## Types
 
 ```@docs
-BolometricCorrections.MIST.MISTBCGridv2
+BolometricCorrections.MIST.MISTv2BCGrid
 ```
 
-The constructor for [`MISTBCGridv2`](@ref) accepts the same human-readable photometric system names as `MISTBCGridv1`. In addition to all photometric systems available in v1.2, v2.5 adds:
+The constructor for [`MISTv2BCGrid`](@ref) accepts the same human-readable photometric system names as `MISTv1BCGrid`. In addition to all photometric systems available in v1.2, v2.5 adds:
 
 - **Euclid** (VIS + NISP)
 - **JWST/NIRISS**
@@ -87,7 +87,7 @@ show(stdout, "text/plain", filter(x -> occursin("MIST", x) & occursin("2.5", x),
 Once a grid is constructed for a particular photometric system, a BC table with fixed \[Fe/H\], \[α/Fe\], and ``A_V`` can be interpolated.
 
 ```@docs
-BolometricCorrections.MIST.MISTBCTablev2
+BolometricCorrections.MIST.MISTv2BCTable
 ```
 
 ## Photometric Zeropoints

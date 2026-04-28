@@ -26,15 +26,15 @@ Both versions share:
 | \[Fe/H\] range | −4.0 to +0.75 (18 values) | −3.0 to +0.5 (15 values) |
 | logg range | −4.0 to 9.5 (26 values) | −1.0 to 9.5 (22 values) |
 | Photometric systems | 22 | 28 (adds Euclid, NIRISS, RoboAO, Roman, HST/ACS-SBC) |
-| Chemistry type | [`MISTChemistryv1`](@ref BolometricCorrections.MIST.MISTChemistryv1) | [`MISTChemistryv2`](@ref BolometricCorrections.MIST.MISTChemistryv2) |
-| Grid type | [`MISTBCGridv1`](@ref BolometricCorrections.MIST.MISTBCGridv1) | [`MISTBCGridv2`](@ref BolometricCorrections.MIST.MISTBCGridv2) |
-| Table type | [`MISTBCTablev1`](@ref BolometricCorrections.MIST.MISTBCTablev1) | [`MISTBCTablev2`](@ref BolometricCorrections.MIST.MISTBCTablev2) |
+| Chemistry type | [`MISTv1Chemistry`](@ref BolometricCorrections.MIST.MISTv1Chemistry) | [`MISTv2Chemistry`](@ref BolometricCorrections.MIST.MISTv2Chemistry) |
+| Grid type | [`MISTv1BCGrid`](@ref BolometricCorrections.MIST.MISTv1BCGrid) | [`MISTv2BCGrid`](@ref BolometricCorrections.MIST.MISTv2BCGrid) |
+| Table type | [`MISTv1BCTable`](@ref BolometricCorrections.MIST.MISTv1BCTable) | [`MISTv2BCTable`](@ref BolometricCorrections.MIST.MISTv2BCTable) |
 
 Note that for ease of transition from with earlier versions of BolometricCorrections.jl that only supported MIST v1.2, the following deprecated aliases are available
 
- - `MISTChemistry` aliases for [`MISTChemistryv1`](@ref BolometricCorrections.MIST.MISTChemistryv1)
- - `MISTBCTable` aliases for [`MISTBCTablev1`](@ref)
- - `MISTBCGrid` aliases for [`MISTBCGridv1`](@ref)
+ - `MISTChemistry` aliases for [`MISTv1Chemistry`](@ref BolometricCorrections.MIST.MISTv1Chemistry)
+ - `MISTBCTable` aliases for [`MISTv1BCTable`](@ref)
+ - `MISTBCGrid` aliases for [`MISTv1BCGrid`](@ref)
 
 ## Shared types
 
