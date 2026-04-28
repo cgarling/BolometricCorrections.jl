@@ -9,7 +9,7 @@ A bolometric correction (BC) is the offset between a star's absolute bolometric 
 
  - [MIST](https://mist.science) — two versions are supported:
    - **v1.2**: metallicity ([Fe/H]) and extinction (Av) as free parameters
-   - **v2.5**: adds [α/Fe] as a free parameter and uses updated solar chemical abundances
+   - **v2.5**: adds [α/Fe] as a free parameter, assumes different solar abundances than v1.2
  - [YBC](https://gitlab.com/parsec-group/public_repos/YBC_tables), which interpolates between several different BC libaries -- supported sub-libraries are
    - [PHOENIX](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl-agss)
    - [ATLAS9](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/castelli-and-kurucz-atlas)
