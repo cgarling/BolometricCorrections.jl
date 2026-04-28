@@ -100,3 +100,28 @@ feh, afe, Av = -1.01, 0.2, 0.125
 table = grid(feh, afe, Av)
 table(2755, 0.01)
 ```
+
+### YBC
+
+The YBC grid blends several atmosphere libraries (PHOENIX for cool stars, ATLAS9 for hot stars, Koester/Tremblay for white dwarfs, and WM-basic for O/B stars) into a single interface. The top-level `YBCGrid` type handles the transitions between libraries automatically:
+
+```julia
+using BolometricCorrections
+grid = YBCGrid("jwst_nircam_wide")
+```
+
+A BC table with fixed metallicity (\[M/H\]) and reddening (`Av`) is obtained by calling the grid:
+
+```julia
+mh, Av = -1.0, 0.0
+table = grid(mh, Av)
+```
+
+The table is then callable with `(Teff [K], logg [cgs])` exactly as for the MIST grids:
+
+```julia
+table(5778, 4.44)           # single point
+table([4000, 5778], [2.0, 4.44])  # array broadcast → matrix
+```
+
+The individual sub-library grids (`PHOENIXYBCGrid`, `ATLAS9YBCGrid`, etc.) can also be used directly if you only need one atmosphere library. See the documentation for details.
