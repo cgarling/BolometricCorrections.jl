@@ -150,9 +150,11 @@ Z(::PARSECChemistry) = 0.01774 # Z_initial in Table 3 of Bressan2012
 Z_phot(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
 # Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
 Y_p(::PARSECChemistry) = 0.2485
-# f_alpha computed from Bressan (2012) abundance mixture: GS98 for most elements,
-# Caffau (2011) for C, N, O, Ne, Ar (see §4 of Bressan 2012); alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
-alpha_mass_fraction(::PARSECChemistry) = 0.6763
+# f_alpha computed from Bressan (2012) Table 1 abundance mixture: GS98 base, with
+# C=8.50 (Caffau+2010), N=7.86 (Caffau+2009), O=8.76 (Caffau+2008b), P=5.46 (Caffau+2007b),
+# S=7.16 (CaffauLudwig+2007), Fe=7.52 (Caffau+2011); all other elements (incl. Ne, Ar) from GS98.
+# Alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+alpha_mass_fraction(::PARSECChemistry) = 0.6723
 
 Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 178//100 * Zval # γ = 1.78
 # X generic
