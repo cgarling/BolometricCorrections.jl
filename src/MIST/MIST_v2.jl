@@ -55,7 +55,7 @@ function check_vals_v2(feh, afe, Av)
     end
     Av_ext = extrema(_mist_v2_Av)
     if Av < first(Av_ext) || Av > last(Av_ext)
-        throw(ArgumentError("Provided A_v $Av is outside the bounds for the MIST v2.5 BC tables $Av_ext"))
+        throw(ArgumentError("Provided `Av` $Av is outside the bounds for the MIST v2.5 BC tables $Av_ext"))
     end
 end
 
@@ -332,6 +332,24 @@ Singleton struct representing the MIST v2.5 chemical mixture, based on [Grevesse
 
 Protosolar (initial) values [`X`](@ref), [`Y`](@ref), and [`Z`](@ref) are taken from the solar calibration in Table 1 of [Dotter2026](@citet). Photospheric values are derived from the
 [GS98](@cite Grevesse1998) ratio `(Z/X)_phot = 0.023` and the calibrated surface helium abundance `Ysurf = 0.2482`. The primordial helium abundance [`Y_p`](@ref) is from [PlanckCollaboration2016](@citet).
+
+```jldoctest
+julia> using BolometricCorrections.MIST: MISTv2Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
+
+julia> chem = MISTv2Chemistry();
+
+julia> X(chem) + Y(chem) + Z(chem) ≈ 1 # solar protostellar values
+true
+
+julia> X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1 # solar photospheric values
+true
+
+julia> MH(chem, Z(chem) * 0.1) ≈ -1.0231128936384866
+true
+
+julia> Z(chem, -1.0231128936384866) ≈ Z(chem) * 0.1
+true
+```
 """
 struct MISTv2Chemistry <: AbstractChemicalMixture end
 
