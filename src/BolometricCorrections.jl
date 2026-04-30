@@ -188,17 +188,7 @@ For grids with scaled-solar compositions, this is equivalent to [`MH`](@ref).
 Generic method uses the [Salaris1993](@citet) equation to compute \\[Fe/H\\] 
 from [`MH`](@ref) and [`alphaFe`](@ref).
 """
-function FeH(table::AbstractBCTable)
-    afe = alphaFe(table)
-    f_α = alpha_mass_fraction(chemistry(table))
-    return MH(table) - log10(f_α * exp10(afe) + (1 - f_α))
-end
-"""
-    alphaFe(table::AbstractBCTable)
-Returns the \\[α/Fe\\] enhancement of the bolometric correction table.
-Returns zero for grids with scaled-solar compositions.
-"""
-function alphaFe(table::AbstractBCTable) end
+FeH(table::AbstractBCTable) = FeH(chemistry(table), MH(table), alphaFe(table))
 """
     MH(table::AbstractBCTable)
 Returns the total metallicity \\[M/H\\] of the bolometric correction table.
@@ -206,11 +196,13 @@ For grids with scaled-solar compositions, this is equivalent to [`FeH`](@ref).
 Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\] 
 from [`FeH`](@ref) and [`alphaFe`](@ref).
 """
-function MH(table::AbstractBCTable)
-    afe = alphaFe(table)
-    f_α = alpha_mass_fraction(chemistry(table))
-    return FeH(table) + log10(f_α * exp10(afe) + (1 - f_α))
-end
+MH(table::AbstractBCTable) = MH(chemistry(table), FeH(table), alphaFe(table))
+"""
+    alphaFe(table::AbstractBCTable)
+Returns the \\[α/Fe\\] enhancement of the bolometric correction table.
+Returns zero for grids with scaled-solar compositions.
+"""
+function alphaFe(table::AbstractBCTable) end
 """
     X(table::AbstractBCTable)
 Returns the hydrogen mass fraction ``X`` of the bolometric correction table.
@@ -388,6 +380,24 @@ for the given chemical mixture model. Used to convert between \\[M/H\\] and
 (see [Salaris1993](@cite)).
 """
 function alpha_mass_fraction(mix::AbstractChemicalMixture) end
+"""
+    MH(mix::AbstractChemicalMixture, feh, afe)
+Returns the total metallicity \\[M/H\\] at a given \\[Fe/H\\] `feh` and [α/Fe] `afe`.
+Uses the [Salaris1993](@citet) equation.
+"""
+function MH(mix::AbstractChemicalMixture, feh, afe)
+    f_α = alpha_mass_fraction(mix)
+    return feh + log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    FeH(mix::AbstractChemicalMixture, mh, afe)
+Returns the iron abundance \\[Fe/H\\] at a given total metallicity
+\\[M/H\\] `mh` and [α/Fe] `afe`. Uses the [Salaris1993](@citet) equation.
+"""
+function FeH(mix::AbstractChemicalMixture, mh, afe)
+    f_α = alpha_mass_fraction(mix)
+    return mh - log10(f_α * exp10(afe) + (1 - f_α))
+end
 # function Z(mix::T) where T <: AbstractChemicalMixture
 #     @warn "Requested solar protostellar metal mass for chemical mixture model $T. This model does not have a `Z` method implemented, so we are falling back to the photospheric metal mass fraction `Z_phot(mix)`." maxlog=1
 #     return Z_phot(mix) # Fallback for unimplemented Z

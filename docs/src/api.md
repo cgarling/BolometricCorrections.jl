@@ -71,7 +71,9 @@ It has been shown that helium abundance ``Y`` typically only affects broadband B
 X(::BolometricCorrections.AbstractChemicalMixture, ::Any)
 Y(::BolometricCorrections.AbstractChemicalMixture, ::Any)
 Z(::BolometricCorrections.AbstractChemicalMixture, ::Any)
+FeH(::BolometricCorrections.AbstractChemicalMixture, ::Any, ::Any)
 MH(::BolometricCorrections.AbstractChemicalMixture, ::Any)
+MH(::BolometricCorrections.AbstractChemicalMixture, ::Any, ::Any)
 ```
 
 Note that we do not offer methods scaling the photospheric abundance values with ``Z``, such as `MH_phot(mix::BolometricCorrections.AbstractChemicalMixture, Z)`, as the diffusive processes that change the photospheric abundances relative to the initial abundances depend on both the age and initial mass of the star in question -- it is therefore inappropriate to simply scale the assumed solar photospheric abundances to other bulk metallicities ``Z``.
