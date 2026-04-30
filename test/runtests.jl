@@ -10,3 +10,4 @@ doctest(BC)
 # Run tests for MIST submodule
 include(joinpath("MIST", "run_mist_tests.jl"))
 include(joinpath("YBC", "run_ybc_tests.jl"))
+include(joinpath("alpha_mass_fractions", "run_alpha_tests.jl"))

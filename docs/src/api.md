@@ -15,6 +15,7 @@ gridname(::BolometricCorrections.AbstractBCGrid)
 filternames(::BolometricCorrections.AbstractBCGrid)
 extrema(::BolometricCorrections.AbstractBCGrid)
 Table(::BolometricCorrections.AbstractBCGrid)
+chemistry(::BolometricCorrections.AbstractBCGrid)
 ```
 
 ## BC Table API
@@ -24,7 +25,16 @@ gridname(::BolometricCorrections.AbstractBCTable)
 filternames(::BolometricCorrections.AbstractBCTable)
 extrema(::BolometricCorrections.AbstractBCTable)
 Table(::BolometricCorrections.AbstractBCTable)
+chemistry(::BolometricCorrections.AbstractBCTable)
+alphaFe(::BolometricCorrections.AbstractBCTable)
+MH(::BolometricCorrections.AbstractBCTable)
+FeH(::BolometricCorrections.AbstractBCTable)
+X(::BolometricCorrections.AbstractBCTable)
+Y(::BolometricCorrections.AbstractBCTable)
+Z(::BolometricCorrections.AbstractBCTable)
 ```
+
+Typically only one of `FeH`, `MH`, and `Z` must be defined to access the metallicity properties for a given table type, as long as `alphaFe` is also defined -- fallback methods are present to calculate the others. 
 
 ## [Photometric Zeropoints API](@id zpt_api)
 ```@docs
@@ -43,7 +53,6 @@ Chemical mixtures used for BCs typically start by defining an assumed chemical m
 
 ```@docs
 BolometricCorrections.AbstractChemicalMixture
-chemistry(::BolometricCorrections.AbstractBCTable)
 X(::BolometricCorrections.AbstractChemicalMixture)
 X_phot(::BolometricCorrections.AbstractChemicalMixture)
 Y_p(::BolometricCorrections.AbstractChemicalMixture)
@@ -51,6 +60,7 @@ Y(::BolometricCorrections.AbstractChemicalMixture)
 Y_phot(::BolometricCorrections.AbstractChemicalMixture)
 Z(::BolometricCorrections.AbstractChemicalMixture)
 Z_phot(::BolometricCorrections.AbstractChemicalMixture)
+alpha_mass_fraction(::BolometricCorrections.AbstractChemicalMixture)
 ```
 
 The above methods define the solar standard assumed in chemical mixture models. The information contained in an `AbstractChemicalMixture` can be used to convert between different chemical conventions (i.e., the metal mass fraction [`Z`](@ref) and logarithmic metallicity [\[M/H\]](@ref MH)). These conversion methods are documented below with accompanying notes for use. 
@@ -61,7 +71,9 @@ It has been shown that helium abundance ``Y`` typically only affects broadband B
 X(::BolometricCorrections.AbstractChemicalMixture, ::Any)
 Y(::BolometricCorrections.AbstractChemicalMixture, ::Any)
 Z(::BolometricCorrections.AbstractChemicalMixture, ::Any)
+FeH(::BolometricCorrections.AbstractChemicalMixture, ::Any, ::Any)
 MH(::BolometricCorrections.AbstractChemicalMixture, ::Any)
+MH(::BolometricCorrections.AbstractChemicalMixture, ::Any, ::Any)
 ```
 
 Note that we do not offer methods scaling the photospheric abundance values with ``Z``, such as `MH_phot(mix::BolometricCorrections.AbstractChemicalMixture, Z)`, as the diffusive processes that change the photospheric abundances relative to the initial abundances depend on both the age and initial mass of the star in question -- it is therefore inappropriate to simply scale the assumed solar photospheric abundances to other bulk metallicities ``Z``.

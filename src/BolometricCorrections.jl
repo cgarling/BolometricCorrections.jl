@@ -28,7 +28,8 @@ without(dtype, union::Union = HardwareNumeric) = Union{filter(t -> t !== dtype, 
 # Bolometric correction grid API
 
 """ `AbstractBCGrid{T <: Real}` is the abstract supertype for all bolometric correction grids. `T` is the data type to use internally and is returned by `eltype`. Generally, concrete subtypes should be callable with population properties (e.g., metallicity, reddening, etc.) to interpolate the full grid to these properties, returning a concrete subtype of [`BolometricCorrections.AbstractBCTable`](@ref). As different grids will have different population properties available (e.g., some support different α-element abundances in addition to total metallicity), the call signature to interpolate the grid is specific for each concrete subtype, which include
- - [`MISTBCGrid`](@ref)
+ - [`MISTv1BCGrid`](@ref)
+ - [`MISTv2BCGrid`](@ref)
  - [`PHOENIXYBCGrid`](@ref)
  - [`ATLAS9YBCGrid`](@ref)
 """
@@ -92,7 +93,7 @@ Tables may also be called with a single argument (usually a `NamedTuple`) which 
 
     (table::AbstractTable)(arg)
 
-We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTBCTable`](@ref)).
+We additionally support automatic broadcasting over input arrays -- the following method formats the result into a stacked matrix or a `TypedTables.Table`, if that is the first argument. The creation of the table has a roughly fixed runtime overhead cost of 3--5 μs to perform the type conversion. Examples of this usage are provided in the docstrings for each subtype of `AbstractBCTable` (see, for example, [`MISTv1BCTable`](@ref)).
 
     (table::AbstractBCTable)([::Type{TypedTables.Table},]
                              args::Vararg{AbstractArray{<:Real}, N}) where {N}
@@ -180,6 +181,43 @@ getproperties(table::AbstractBCTable, names::Tuple{Vararg{Symbol}}) = getpropert
 Returns a `NTuple{N, Symbol}` containing the names of the photometric filters contained in the provided bolometric correction table. See `columnnames` if you also want to retrieve names of dependent variable columns.
 """
 function filternames(::AbstractBCTable) end
+"""
+    FeH(table::AbstractBCTable)
+Returns the iron abundance \\[Fe/H\\] of the bolometric correction table.
+For grids with scaled-solar compositions, this is equivalent to [`MH`](@ref).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[Fe/H\\] 
+from [`MH`](@ref) and [`alphaFe`](@ref).
+"""
+FeH(table::AbstractBCTable) = FeH(chemistry(table), MH(table), alphaFe(table))
+"""
+    MH(table::AbstractBCTable)
+Returns the total metallicity \\[M/H\\] of the bolometric correction table.
+For grids with scaled-solar compositions, this is equivalent to [`FeH`](@ref).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\] 
+from [`FeH`](@ref) and [`alphaFe`](@ref).
+"""
+MH(table::AbstractBCTable) = MH(chemistry(table), FeH(table), alphaFe(table))
+"""
+    alphaFe(table::AbstractBCTable)
+Returns the \\[α/Fe\\] enhancement of the bolometric correction table.
+Returns zero for grids with scaled-solar compositions.
+"""
+function alphaFe(table::AbstractBCTable) end
+"""
+    X(table::AbstractBCTable)
+Returns the hydrogen mass fraction ``X`` of the bolometric correction table.
+"""
+X(table::AbstractBCTable) = X(chemistry(table), Z(table))
+"""
+    Y(table::AbstractBCTable)
+Returns the helium mass fraction ``Y`` of the bolometric correction table.
+"""
+Y(table::AbstractBCTable) = Y(chemistry(table), Z(table))
+"""
+    Z(table::AbstractBCTable)
+Returns the metal mass fraction ``Z`` of the bolometric correction table.
+"""
+Z(t::AbstractBCTable) = Z(chemistry(t), MH(t))
 
 #########################################
 # Zeropoint definition and conversion API
@@ -197,7 +235,7 @@ Return the correct concrete instance of [`AbstractZeropoints`](@ref BolometricCo
 for the type of `grid` or `table`.
 
 ```jldoctest
-julia> zeropoints(MISTBCGrid("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
+julia> zeropoints(MISTv1BCGrid("JWST")) isa BolometricCorrections.MIST.MISTZeropoints
 true
 ```
 """
@@ -255,24 +293,15 @@ Base.Broadcast.broadcastable(t::AbstractChemicalMixture) = Ref(t)
 
 """
     chemistry(mix::AbstractBCTable)
-    chemistry(mix::AbstractBCGrid)
 Returns the correct concrete instance of `AbstractChemicalMixture` for the
-provided bolometric correction grid or table. This provides a convenient 
-programmatic way to obtain this chemical information.
-
-```jldoctest
-julia> grid = MISTBCGrid("JWST");
-
-julia> chemistry(grid)
-BolometricCorrections.MIST.MISTChemistry()
-
-julia> table = grid(-1.5, 0.03);
-
-julia> chemistry(table)
-BolometricCorrections.MIST.MISTChemistry()
-```
+provided bolometric correction table.
 """
 chemistry(mix::AbstractBCTable) = chemistry(typeof(mix))
+"""
+    chemistry(mix::AbstractBCGrid)
+Returns the correct concrete instance of `AbstractChemicalMixture` for the
+provided bolometric correction grid.
+"""
 chemistry(mix::AbstractBCGrid) = chemistry(typeof(mix))
 # ↑ generics that call to chemistry(::Type{<:NewType}) which can often be simple
 
@@ -342,6 +371,33 @@ Returns the **protostellar** logarithmic metallicity [M/H] = log10(Z/X) - log10(
 given the metal mass fraction `Z` and the provided chemical mixture.
 """
 function MH(mix::AbstractChemicalMixture, Z) end
+"""
+    alpha_mass_fraction(mix::AbstractChemicalMixture)
+Returns the solar mass fraction of α-elements relative to total solar metals
+for the given chemical mixture model. Used to convert between \\[M/H\\] and
+\\[Fe/H\\] via the relation
+\\[M/H\\] = \\[Fe/H\\] + log10(`alpha_mass_fraction` × 10^\\[α/Fe\\] + (1 - `alpha_mass_fraction`))
+(see [Salaris1993](@cite)).
+"""
+function alpha_mass_fraction(mix::AbstractChemicalMixture) end
+"""
+    MH(mix::AbstractChemicalMixture, feh, afe)
+Returns the total metallicity \\[M/H\\] at a given \\[Fe/H\\] `feh` and [α/Fe] `afe`.
+Uses the [Salaris1993](@citet) equation.
+"""
+function MH(mix::AbstractChemicalMixture, feh, afe)
+    f_α = alpha_mass_fraction(mix)
+    return feh + log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    FeH(mix::AbstractChemicalMixture, mh, afe)
+Returns the iron abundance \\[Fe/H\\] at a given total metallicity
+\\[M/H\\] `mh` and [α/Fe] `afe`. Uses the [Salaris1993](@citet) equation.
+"""
+function FeH(mix::AbstractChemicalMixture, mh, afe)
+    f_α = alpha_mass_fraction(mix)
+    return mh - log10(f_α * exp10(afe) + (1 - f_α))
+end
 # function Z(mix::T) where T <: AbstractChemicalMixture
 #     @warn "Requested solar protostellar metal mass for chemical mixture model $T. This model does not have a `Z` method implemented, so we are falling back to the photospheric metal mass fraction `Z_phot(mix)`." maxlog=1
 #     return Z_phot(mix) # Fallback for unimplemented Z
@@ -411,13 +467,13 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 #################################
 # Top-level API exports
 export Table, columnnames, columns, getproperties, gridname, filternames, zeropoints, vegamags,
-    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, chemistry
+    stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry
 
 # Include submodules
 include(joinpath("MIST", "MIST.jl"))
 using .MIST
 @compat public MIST
-export MISTBCGrid, MISTBCTable
+export MISTBCGrid, MISTBCTable, MISTv1BCGrid, MISTv1BCTable, MISTv2BCGrid, MISTv2BCTable
 
 include(joinpath("YBC", "YBC.jl"))
 using .YBC

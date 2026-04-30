@@ -7,7 +7,9 @@
 
 A bolometric correction (BC) is the offset between a star's absolute bolometric magnitude and its absolute magnitude in a specific bandpass or filter (e.g., V band). In order to place theoretical stellar models into observational filter spaces, bolometric corrections must be applied to the bolometric magnitudes of the stellar models. Here we provide access to and interpolation of pre-computed grids of [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction). See our documentation linked in the badges above for additional information. Currently supported bolometric correction grids are
 
- - [MIST](https://mist.science)
+ - [MIST](https://mist.science) — two versions are supported:
+   - **v1.2**: metallicity ([Fe/H]) and extinction (Av) as free parameters
+   - **v2.5**: adds [α/Fe] as a free parameter and assumes different solar abundances than v1.2
  - [YBC](https://gitlab.com/parsec-group/public_repos/YBC_tables), which interpolates between several different BC libaries -- supported sub-libraries are
    - [PHOENIX](https://svo2.cab.inta-csic.es/theory/newov2/index.php?models=bt-settl-agss)
    - [ATLAS9](https://www.stsci.edu/hst/instrumentation/reference-data-for-calibration-and-tools/astronomical-catalogs/castelli-and-kurucz-atlas)
@@ -27,20 +29,22 @@ Pkg.add("BolometricCorrections");
 
 ## Example Usage
 
-The HST ACS WFC bolometric corrections from the MIST grid can be loaded with
+### MIST v1.2
+
+The HST ACS WFC bolometric corrections from the MIST v1.2 grid can be loaded with
 
 ```julia
 using BolometricCorrections
-grid = MISTBCGrid("hst_acs_wfc")
+grid = MISTv1BCGrid("hst_acs_wfc")
 ```
 
 If you haven't yet acquired these data, you will be prompted to allow the data to be downloaded and installed.
 
-The MIST bolometric correction grid covers a wide range of metallicity and reddening (`Av`) values. We can interpolate the grid at specific values of metallicity ([M/H]) and reddening (`Av`), obtaining a `MISTBCTable` with
+The MIST v1.2 grid covers a wide range of metallicity and reddening (`Av`) values. We can interpolate the grid at specific values of [Fe/H] and reddening (`Av`), obtaining a `MISTv1BCTable` with
 
 ```julia
-mh, Av = -1.01, 0.125
-table = grid(mh, Av)
+feh, Av = -1.01, 0.125
+table = grid(feh, Av)
 ```
 
 This table can now be interpolated at any supported value of effective temperature (`Teff`, in Kelvin) and surface gravity (`logg`) as
@@ -73,10 +77,10 @@ bcs = table(Table, [2755, 2756], [0.01, 0.02])
 ```
 ```
 Table with 13 columns and 2 rows:
-     ACS_WFC_F435W  ACS_WFC_F475W  ACS_WFC_F502N  ACS_WFC_F550M  ACS_WFC_F555W  ACS_WFC_F606W  ACS_WFC_F625W  ACS_WFC_F658N  ⋯
-   ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- 1 │ -6.79721       -5.9089        -6.67736       -4.90698       -5.21007       -4.28292       -3.98601       -3.32683       ⋯
- 2 │ -6.77482       -5.88998       -6.65945       -4.88979       -5.19314       -4.2692        -3.973         -3.31317       ⋯
+     ACS_WFC_F435W  ACS_WFC_F475W  ACS_WFC_F502N  ACS_WFC_F550M  ACS_WFC_F555W  ACS_WFC_F606W  ACS_WFC_F625W  ⋯
+   ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────
+ 1 │ -6.69738       -5.82358       -6.59423       -4.8335        -5.13368       -4.21906       -3.92446       ⋯
+ 2 │ -6.67498       -5.80464       -6.57631       -4.81631       -5.11675       -4.20532       -3.91145       ⋯
  ```
 
 so that the results can be more conveniently accessed with the following syntax
@@ -84,3 +88,40 @@ so that the results can be more conveniently accessed with the following syntax
 ```julia
 bcs.ACS_WFC_F435W # Retrieve BCs in F435W filter
 ```
+
+### MIST v2.5
+
+The MIST v2.5 grid adds \[α/Fe\] as a free parameter. Load and use it in the same way, passing the additional `afe` argument when constructing the table:
+
+```julia
+using BolometricCorrections
+grid = MISTv2BCGrid("hst_acs_wfc")
+feh, afe, Av = -1.01, 0.2, 0.125
+table = grid(feh, afe, Av)
+table(2755, 0.01)
+```
+
+### YBC
+
+The YBC grid blends several atmosphere libraries (PHOENIX for cool stars, ATLAS9 for hot stars, Koester/Tremblay for white dwarfs, and WM-basic for O/B stars) into a single interface. The top-level `YBCGrid` type handles the transitions between libraries automatically:
+
+```julia
+using BolometricCorrections
+grid = YBCGrid("jwst_nircam_wide")
+```
+
+A BC table with fixed metallicity (\[M/H\]) and reddening (`Av`) is obtained by calling the grid:
+
+```julia
+mh, Av = -1.0, 0.0
+table = grid(mh, Av)
+```
+
+The table is then callable with `(Teff [K], logg [cgs])` exactly as for the MIST grids:
+
+```julia
+table(5778, 4.44)           # single point
+table([4000, 5778], [2.0, 4.44])  # array broadcast → matrix
+```
+
+The individual sub-library grids (`PHOENIXYBCGrid`, `ATLAS9YBCGrid`, etc.) can also be used directly if you only need one atmosphere library. See the documentation for details.

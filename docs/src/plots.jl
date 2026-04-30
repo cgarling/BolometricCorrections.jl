@@ -27,6 +27,15 @@ set_theme!(theme_latexfonts();
 #     return plot_bc_table(grid, filtername, Av, args...)
 # end
 
+function plot_bcs(logTeff, logg, plot_data)
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
+    ax.xreversed = true
+    p = heatmap!(ax, logTeff, logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
+    Colorbar(f[:, end+1], p)
+    return f, ax
+end
+
 # AbstractBCTable method
 function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff::AbstractVector, logg::AbstractVector)
     # We'll plot Teff decreasing from left to right
@@ -36,14 +45,10 @@ function plot_bc_table(table::AbstractBCTable, filtername::AbstractString, Teff:
     # Transposing logg will evaluate BC for every combination of Teff and logg
     data = table.(Teff, logg')
     logTeff = log10.(Teff)
-    filter_index = findfirst(==(filtername), String(i) for i in filternames(table))
+    filter_index = findfirst(x -> occursin(filtername, x), String(i) for i in filternames(table))
     plot_data = [d[filter_index] for d in data]
 
-    f = Figure()
-    ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
-    ax.xreversed = true
-    p = heatmap!(ax, logTeff, logg, plot_data; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
-    Colorbar(f[:, end+1], p)
+    f, ax = plot_bcs(logTeff, logg, plot_data)
 
     # # Create top axis to display T [K] x ticks
     # # This messes up the heatmap, don't know why ...
@@ -70,17 +75,21 @@ function plot_bc_table_diff(table1::AbstractBCTable, table2::AbstractBCTable, fn
     logTeff = log10.(Teff)
     # Transposing logg will evaluate BC for every combination of Teff and logg
     data1 = table1.(Teff, logg')
-    filter_index1 = findfirst(==(fnames[1]), String(i) for i in filternames(table1))
+    # filter_index1 = findfirst(==(fnames[1]), String(i) for i in filternames(table1))
+    filter_index1 = findfirst(x -> occursin(fnames[1], x), String(i) for i in filternames(table1))
     plot_data1 = [d[filter_index1] for d in data1]
     # Repeat for second table
     data2 = table2.(Teff, logg')
-    filter_index2 = findfirst(==(fnames[2]), String(i) for i in filternames(table2))
+    # filter_index2 = findfirst(==(fnames[2]), String(i) for i in filternames(table2))
+    filter_index2 = findfirst(x -> occursin(fnames[2], x), String(i) for i in filternames(table2))
     plot_data2 = [d[filter_index2] for d in data2]
 
-    f = Figure()
-    ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
-    ax.xreversed = true
-    p = heatmap!(ax, logTeff, logg, plot_data1 .- plot_data2; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
-    Colorbar(f[:, end+1], p)
+    # f = Figure()
+    # ax = Axis(f[1, 1], xlabel="log(Teff)", ylabel=L"$\text{log} \ g$")
+    # ax.xreversed = true
+    # p = heatmap!(ax, logTeff, logg, plot_data1 .- plot_data2; interpolate=false, colormap=:gist_rainbow) # :viridis) # , colormap=:cividis)
+    # Colorbar(f[:, end+1], p)
+    f, ax = plot_bcs(logTeff, logg, plot_data1 .- plot_data2)
+     # Create top axis to display T [K] x ticks
     return f, ax
 end
