@@ -1,6 +1,6 @@
 name = "BolometricCorrections"
 uuid = "37ee4594-8306-40da-a4c2-d7ed95560e0b"
-version = "0.1.8"
+version = "0.2.0"
 authors = ["cgarling <chris.t.garling@gmail.com>"]
 
 [deps]
