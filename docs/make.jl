@@ -29,7 +29,10 @@ makedocs(
                   example_size_threshold=0),    # Write all @example to file
     authors = "Chris Garling",
     pages = ["index.md",
-             "MIST.md",
+             "MIST" => 
+               [joinpath("mist", "mist_overview.md"),
+                joinpath("mist", "mist_v1.md"),
+                joinpath("mist", "mist_v2.md")],
              "YBC" =>
                [
                 joinpath("ybc", "ybc.md"),

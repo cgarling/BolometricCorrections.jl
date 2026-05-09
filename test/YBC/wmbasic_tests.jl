@@ -17,6 +17,8 @@ for mh in Float32.(range(extrema(grid).MH[1], extrema(grid).MH[2]; length=10))
         table = grid(mh, Av)
         @test table isa WMbasicYBCTable
         @test MH(table) ≈ mh
+        @test FeH(table) == MH(table)
+        @test alphaFe(table) == 0
         chem = chemistry(table)
         @test Z(table) ≈ Z(chem, MH(table))
         @test Y(table) ≈ Y(chem, Z(table))

@@ -2,4 +2,5 @@
     @safetestset "select_subtable" include("select_subtable.jl")
     @safetestset "chemistry" include("mist_chemistry.jl")
     @safetestset "zeropoints" include("mist_zpt_test.jl")
+    @safetestset "deprecations" include("deprecations.jl")
 end

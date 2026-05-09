@@ -12,6 +12,17 @@ table1 = grid(-1.0, 0f0)
 @test gridname(PHOENIXYBCGrid) isa String
 @test gridname(table1) isa String
 @test gridname(PHOENIXYBCTable) isa String
+
+# Test FeH / alphaFe at grid [M/H] nodes
+_mh_afe = Dict(zip(BolometricCorrections.YBC.PHOENIX._mh, BolometricCorrections.YBC.PHOENIX._afe))
+
+for (mh, expected_afe) in pairs(_mh_afe)
+    table = grid(mh, 0.0f0)
+    f_alpha = alpha_mass_fraction(chemistry(table))
+    @test FeH(table) ≈ mh - log10(f_alpha * exp10(expected_afe) + (1 - f_alpha))
+    @test alphaFe(table) ≈ expected_afe
+end
+
 for mh in Float32.(range(extrema(BolometricCorrections.YBC.PHOENIX.gridinfo.MH)...; step=0.1))
     for Av in Float64.(range(extrema(BolometricCorrections.YBC.PHOENIX.gridinfo.Av)...; step=0.1))
         table = grid(mh, Av)
