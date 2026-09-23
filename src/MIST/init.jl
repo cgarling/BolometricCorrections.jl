@@ -12,8 +12,10 @@ end
 
 # Read data from unpacked MIST BC file into Table
 function read_mist_bc(fname::AbstractString, header) # ::AbstractVector{<:AbstractString})
+    # buffer_in_memory=true avoids mmapping the source, which can block
+    # deletion of the extracted files on Windows during post-fetch cleanup
     return CSV.read(fname, Table;
-                    comment="#", ignorerepeated=true, delim=' ', header=header)
+                    comment="#", ignorerepeated=true, delim=' ', header=header, buffer_in_memory=true)
 end
 
 function parse_mist_header(fname::AbstractString)
