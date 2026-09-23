@@ -1,6 +1,6 @@
 name = "BolometricCorrections"
 uuid = "37ee4594-8306-40da-a4c2-d7ed95560e0b"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["cgarling <chris.t.garling@gmail.com>"]
 
 [deps]
@@ -23,7 +23,7 @@ Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [compat]
 ArgCheck = "1, 2"
-CSV = "0.10"
+CSV = "0.10, 1"
 CodecXz = "0.7"
 Compat = "3.47, 4.10"
 DataDeps = "0.7, 1"

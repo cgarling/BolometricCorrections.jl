@@ -264,7 +264,7 @@ function stmags(zpt::AbstractZeropoints, filter, mags) end
 """
     filternames(zpt::AbstractZeropoints)
 
-Returns a `Vector{String}` containing the names of the photometric filters in the table of zeropoints.
+Returns an `AbstractVector{<:AbstractString}` containing the names of the photometric filters in the table of zeropoints.
 """
 function filternames(zpt::AbstractZeropoints) end
 """
