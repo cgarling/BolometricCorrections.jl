@@ -52,6 +52,35 @@ Returns a `NamedTuple` containing the bounds of the dependent variables in the b
 """
 Base.extrema(grid::AbstractBCGrid) = extrema(typeof(grid)) # Define Base.extrema(::Type{<:Grid}) for individual `Grid` types
 """
+    Av_nodes(grid::AbstractBCGrid)
+
+Returns the V-band extinctions ``A_V`` at which the bolometric corrections in `grid` are tabulated, as a sorted `Vector`.
+The bolometric corrections are interpolated linearly in ``A_V`` between consecutive nodes, so magnitudes computed with
+`grid` are piecewise linear functions of ``A_V`` whose slopes change only at these nodes. For grids that combine several
+underlying grids (e.g., [`YBCGrid`](@ref BolometricCorrections.YBC.YBCGrid)), this is the union of their nodes.
+
+```jldoctest
+julia> using BolometricCorrections: Av_nodes, MISTv1BCGrid
+
+julia> Av_nodes(MISTv1BCGrid)
+13-element Vector{Float64}:
+ 0.0
+ 0.05
+ 0.1
+ 0.15
+ 0.2
+ 0.3
+ 0.4
+ 0.6
+ 0.8
+ 1.0
+ 2.0
+ 4.0
+ 6.0
+```
+"""
+Av_nodes(grid::AbstractBCGrid) = Av_nodes(typeof(grid)) # Define Av_nodes(::Type{<:Grid}) for individual `Grid` types
+"""
     Table(grid::AbstractBCGrid)
 
 Returns a `TypedTables.Table` containing the data underlying the bolometric correction grid.
@@ -466,7 +495,7 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 
 #################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, gridname, filternames, zeropoints, vegamags,
+export Table, columnnames, columns, getproperties, gridname, filternames, Av_nodes, zeropoints, vegamags,
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry
 
 # Include submodules

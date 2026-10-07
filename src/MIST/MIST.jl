@@ -7,7 +7,7 @@ module MIST
 using ..BolometricCorrections: AbstractBCGrid, AbstractBCTable, AbstractZeropoints, AbstractChemicalMixture,
                                interp1d, interp2d, repack_submatrix
 import ..BolometricCorrections: zeropoints, filternames, vegamags, abmags, stmags, Mbol, Lbol, Y_p, X, X_phot,
-                                Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
+                                Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname, Av_nodes
 
 using ArgCheck: @argcheck
 using CodecXz: XzDecompressorStream # Decompress downloaded BCs

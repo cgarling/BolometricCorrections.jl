@@ -184,6 +184,7 @@ Base.extrema(::Type{<:MISTv1BCGrid}) = (Teff = (first(gridinfov1.Teff), last(gri
                                         Rv   = (first(gridinfov1.Rv),   last(gridinfov1.Rv)))
 filternames(grid::MISTv1BCGrid) = columnnames(grid)[length(_mist_v1_dependents)+1:end]
 gridname(::Type{<:MISTv1BCGrid}) = "MISTv1"
+Av_nodes(::Type{<:MISTv1BCGrid}) = collect(Float64, _mist_v1_Av)
 zeropoints(::MISTv1BCGrid) = zpt
 chemistry(::Type{<:MISTv1BCGrid}) = MISTv1Chemistry()
 

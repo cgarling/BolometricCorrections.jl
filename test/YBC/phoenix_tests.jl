@@ -13,6 +13,12 @@ table1 = grid(-1.0, 0f0)
 @test gridname(table1) isa String
 @test gridname(PHOENIXYBCTable) isa String
 
+# Bolometric corrections are linear in Av between the nodes returned by Av_nodes
+@test Av_nodes(grid) == Av_nodes(PHOENIXYBCGrid) == collect(Float64, BolometricCorrections.YBC.PHOENIX.gridinfo.Av)
+let t5 = grid(-1.0, 0.5), t10 = grid(-1.0, 1.0)
+    @test grid(-1.0, 0.8)(3500.0, 0.1) ≈ t5(3500.0, 0.1) .+ 0.6 .* (t10(3500.0, 0.1) .- t5(3500.0, 0.1)) rtol=1e-5
+end
+
 # Test FeH / alphaFe at grid [M/H] nodes
 _mh_afe = Dict(zip(BolometricCorrections.YBC.PHOENIX._mh, BolometricCorrections.YBC.PHOENIX._afe))
 

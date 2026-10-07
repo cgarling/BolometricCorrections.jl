@@ -2,7 +2,7 @@ module YBC
 
 # using ..BolometricCorrections: @compat
 using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname, Av_nodes
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -282,6 +282,8 @@ const _ybc_extrema = begin
     NamedTuple{kk}(_map_extrema(k, ex) for k in kk)
 end
 Base.extrema(::Type{<:YBCGrid}) = _ybc_extrema
+Av_nodes(::Type{<:YBCGrid}) = sort!(unique!(reduce(vcat, Av_nodes(g) for g in (PHOENIXYBCGrid, ATLAS9YBCGrid,
+                                                                             KoesterWD.KoesterWDYBCGrid, WMbasic.WMbasicYBCGrid))))
 # function Table(grid::WMbasicYBCGrid)
 #     data = grid.data
 #     tables = Vector{Table}(undef, length(data))

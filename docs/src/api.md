@@ -14,6 +14,7 @@ BolometricCorrections.AbstractBCGrid
 gridname(::BolometricCorrections.AbstractBCGrid)
 filternames(::BolometricCorrections.AbstractBCGrid)
 extrema(::BolometricCorrections.AbstractBCGrid)
+Av_nodes(::BolometricCorrections.AbstractBCGrid)
 Table(::BolometricCorrections.AbstractBCGrid)
 chemistry(::BolometricCorrections.AbstractBCGrid)
 ```

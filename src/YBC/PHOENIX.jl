@@ -7,7 +7,7 @@ The main reference article for these models is [Allard2012](@citet). [Allard2013
 module PHOENIX
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d
-import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, FeH, alphaFe, alpha_mass_fraction, gridname # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, chemistry, Z, MH, FeH, alphaFe, alpha_mass_fraction, gridname, Av_nodes # Y_p, X, X_phot, Y, Y_phot, Z_phot, vegamags, abmags, stmags, Mbol, Lbol
 using ...BolometricCorrections.MIST: MISTv1Chemistry # MIST and YBC PHOENIX both use Asplund2009 abundances, so just use MISTv1Chemistry
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
@@ -169,6 +169,7 @@ Base.extrema(::Type{<:PHOENIXYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff))
                                           Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::PHOENIXYBCGrid) = grid.filters
 gridname(::Type{<:PHOENIXYBCGrid}) = "YBC-PHOENIX"
+Av_nodes(::Type{<:PHOENIXYBCGrid}) = collect(Float64, gridinfo.Av)
 chemistry(::Type{<:PHOENIXYBCGrid}) = MISTv1Chemistry()
 # zeropoints(::PHOENIXYBCGrid) = zpt
 
