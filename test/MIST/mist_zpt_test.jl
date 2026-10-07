@@ -28,6 +28,11 @@ const zpt = BolometricCorrections.MIST.zpt # Constant instance of BolometricCorr
     @test gridname(MISTv1BCTable) isa String
     @test gridname(table1) isa String
 
+    # Bolometric corrections are linear in Av between the nodes returned by Av_nodes
+    @test Av_nodes(grid) == Av_nodes(MISTv1BCGrid) == collect(BolometricCorrections.MIST.gridinfov1.Av)
+    t4, t6 = grid(-1.01, 0.4), grid(-1.01, 0.6)
+    @test grid(-1.01, 0.55)(5000.0, 4.0) ≈ t4(5000.0, 4.0) .+ 0.75 .* (t6(5000.0, 4.0) .- t4(5000.0, 4.0))
+
     for feh in range(extrema(BolometricCorrections.MIST.gridinfov1.feh)...; step=0.1)
         for Av in range(extrema(BolometricCorrections.MIST.gridinfov1.Av)...; step=0.1)
             table = grid(feh, Av)
@@ -47,6 +52,10 @@ end
     @test gridname(grid) isa String
     @test gridname(MISTv2BCTable) isa String
     @test gridname(table1) isa String
+
+    @test Av_nodes(grid) == Av_nodes(MISTv2BCGrid) == collect(BolometricCorrections.MIST.gridinfov2.Av)
+    t4, t6 = grid(-1.01, 0.0, 0.4), grid(-1.01, 0.0, 0.6)
+    @test grid(-1.01, 0.0, 0.55)(5000.0, 4.0) ≈ t4(5000.0, 4.0) .+ 0.75 .* (t6(5000.0, 4.0) .- t4(5000.0, 4.0))
 
     for feh in range(extrema(BolometricCorrections.MIST.gridinfov2.feh)...; step=0.1)
         for Av in range(extrema(BolometricCorrections.MIST.gridinfov2.Av)...; step=0.1)

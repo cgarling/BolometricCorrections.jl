@@ -4,7 +4,7 @@ YBC submodule exposing the bolometric corrections computed by the YBC team based
 module KoesterWD
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Av_nodes # , Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, filter_fits_colnames
 
 using ArgCheck: @argcheck
@@ -169,6 +169,7 @@ Base.extrema(::Type{<:KoesterWDYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff
                                             Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::KoesterWDYBCGrid) = grid.filters
 gridname(::Type{<:KoesterWDYBCGrid}) = "YBC-Koester"
+Av_nodes(::Type{<:KoesterWDYBCGrid}) = collect(Float64, gridinfo.Av)
 chemistry(::Type{<:KoesterWDYBCGrid}) = missing
 # zeropoints(::KoesterWDYBCGrid) = zpt
 

@@ -26,6 +26,8 @@ table2 = grid(0.33, 0.0)
 @test gridname(grid) isa String
 @test gridname(YBCTable) isa String
 @test gridname(table1) isa String
+# The combined grid's Av nodes are the union of those of its constituent grids
+@test Av_nodes(grid) == Av_nodes(YBCGrid) == sort!(unique!(reduce(vcat, Av_nodes.(values(grid.grids)))))
 # Test that, for extrapolated [M/H], each constituent table has
 # either correct MH (for PHOENIX, which reaches -4)
 # or MH == grid minimum for library

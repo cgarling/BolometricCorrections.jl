@@ -13,7 +13,7 @@ using TypedTables: Table
 
 
 using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, AbstractMassLoss
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Z, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
+import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Av_nodes, Z, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
@@ -183,6 +183,7 @@ Base.extrema(::Type{<:WMbasicYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff))
                                           Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
 gridname(::Type{<:WMbasicYBCGrid}) = "YBC-WMbasic"
+Av_nodes(::Type{<:WMbasicYBCGrid}) = collect(Float64, gridinfo.Av)
 # zeropoints(::WMbasicYBCGrid) = zpt
 chemistry(::Type{<:WMbasicYBCGrid}) = PARSECChemistry()
 
