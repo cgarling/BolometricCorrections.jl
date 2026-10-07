@@ -327,7 +327,8 @@ function WMbasicYBCTable(grid::WMbasicYBCGrid, mh::Real, Av::Real)
             end
         end
     end
-    submatrix = reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(gridinfo.Mdot), length(filters))
+    # submatrix is (logg × logTeff, filter, Mdot); reorder to (logg, logTeff, Mdot, filter)
+    submatrix = permutedims(reshape(submatrix, length(gridinfo.logg), length(gridinfo.logTeff), length(filters), length(gridinfo.Mdot)), (1, 2, 4, 3))
     newdata = repack_submatrix(submatrix)
     # have to convert logrange Mdot to regular range for interpolation
     ranges = (gridinfo.logg, gridinfo.logTeff, range(log10(gridinfo.Mdot[1]), log10(gridinfo.Mdot[end]); step=convert(dtype, 1)))
