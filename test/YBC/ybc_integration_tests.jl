@@ -28,6 +28,28 @@ table2 = grid(0.33, 0.0)
 @test gridname(table1) isa String
 # The combined grid's Av nodes are the union of those of its constituent grids
 @test Av_nodes(grid) == Av_nodes(YBCGrid) == sort!(unique!(reduce(vcat, Av_nodes.(values(grid.grids)))))
+# Grids with a subset of the filters give the same BCs for those filters, in the order given, from every
+# constituent library: PHOENIX, ATLAS9, Koester (high logg), and WM-basic (high Mdot)
+let sub = select_filters(grid, ("F814W", :F475W)), i = [findfirst(==(f), filternames(grid)) for f in (:F814W, :F475W)]
+    @test sub isa YBCGrid
+    @test filternames(sub) == (:F814W, :F475W)
+    @test all(filternames(g) == (:F814W, :F475W) for g in sub.grids)
+    @test sub.mag_zpt == grid.mag_zpt[i]
+    for (mh, Av) in ((-1.37, 0.43), (-3.0, 0.0), (0.1, 1.7))
+        t, ts = grid(mh, Av), sub(mh, Av)
+        @test filternames(ts) == (:F814W, :F475W)
+        for (Teff, logg, Mdot) in ((3500.0, 1.0, 0.0), (6000.0, 4.0, 0.0), (12_000.0, 8.0, 0.0), (30_000.0, 4.0, 1e-6), (21_000.0, 4.0, 1e-8))
+            @test ts(Teff, logg, Mdot) == t(Teff, logg, Mdot)[i]
+        end
+    end
+    @test_throws "not found" select_filters(grid, ("F814W", "F999W"))
+end
+# Mass-loss rates computed for many stars at once (as when applying a table to an isochrone) equal those from `Mdot`
+let model = Bjorklund2021MassLoss(), logL = collect(range(3.0, 6.5; length=50))
+    for Zval in (1f-4, 0.002), l in (logL, Float32.(logL))
+        @test _parse_Mdot((logL = l, Z = Zval), model) == model.(Zval, l)
+    end
+end
 # Test that, for extrapolated [M/H], each constituent table has
 # either correct MH (for PHOENIX, which reaches -4)
 # or MH == grid minimum for library

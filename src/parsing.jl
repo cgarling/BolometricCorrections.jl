@@ -95,7 +95,13 @@ end
     else
         try # Try to calculate from other quantities
             logL = _parse_logL(iso)
-            return model.(Z, logL)
+            Z isa Number || return model.(Z, logL)
+            # Same arithmetic as `Mdot`, with the terms in Z computed once rather than for every star; converting the
+            # model's (by default Rational) parameters for every star dominated the cost
+            logZ = log10(Z / model.Zsol)
+            a, c = model.A + model.B * logZ, model.C + model.D * logZ
+            E = convert(promote_type(eltype(logL), typeof(model.E)), model.E)
+            return @. exp10(a + c * (logL - E))
         catch
             throw(ArgumentError("Provided `iso` argument does not contain a recognized Mdot key, `(:Mdot,)` and cannot be calculated from the keys of $iso for the mass-loss model $model."))
         end

@@ -1,8 +1,8 @@
 module YBC
 
 # using ..BolometricCorrections: @compat
-using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d
-import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, gridname, Av_nodes
+using ..BolometricCorrections: AbstractChemicalMixture, AbstractBCGrid, AbstractBCTable, AbstractMassLoss, Bjorklund2021MassLoss, AllHardwareNumeric, without, interp1d, interp2d, _filter_indices
+import ..BolometricCorrections: X, X_phot, Y, Y_phot, Y_p, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, _parse_Mdot, _parse_teff, _parse_logg, filternames, select_filters, gridname, Av_nodes
 
 using ArgCheck: @argcheck
 using Compat: @compat
@@ -271,6 +271,11 @@ end
 (grid::YBCGrid)(mh::Real, Av::Real) = YBCTable(grid, mh, Av)
 Base.show(io::IO, z::YBCGrid) = print(io, "YBC bolometric correction grid for photometric system $(z.name).")
 filternames(grid::YBCGrid) = grid.filters
+function select_filters(grid::YBCGrid, filters)
+    idx = _filter_indices(grid, filters)
+    grids = map(g -> select_filters(g, filters), grid.grids)
+    return YBCGrid(grids, grid.transitions, grid.mass_loss_model, grid.mag_zpt[idx], grid.systems[idx], grid.name, grid.filters[idx], grid.extrapolate)
+end
 gridname(::Type{<:YBCGrid}) = "YBC"
 chemistry(::Type{<:YBCGrid}) = PARSECChemistry()
 const _ybc_extrema = begin

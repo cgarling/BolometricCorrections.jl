@@ -110,6 +110,31 @@ getproperties(grid::AbstractBCGrid, names::Tuple{Vararg{Symbol}}) = getpropertie
 Returns a `Vector{String}` containing the names of the photometric filters contained in the provided bolometric correction grid. See `columnnames` if you also want to retrieve names of dependent variable columns.
 """
 function filternames(::AbstractBCGrid) end
+"""
+    select_filters(grid::AbstractBCGrid, filters)
+
+Returns a bolometric correction grid of the same type as `grid` that contains only the photometric filters `filters`
+(`Symbol`s or strings in [`filternames(grid)`](@ref filternames(::AbstractBCGrid))), in the order given. Tables
+interpolated from the returned grid contain only these filters, so they are faster to create and evaluate and allocate
+less memory when only some of the filters in `grid` are needed.
+
+```jldoctest
+julia> grid = MISTv1BCGrid("JWST");
+
+julia> filternames(select_filters(grid, ("F200W", "F090W")))
+(:F200W, :F090W)
+```
+"""
+function select_filters end
+# Indices of `filters` in `filternames(grid)`, for the `select_filters` methods
+function _filter_indices(grid::AbstractBCGrid, filters)
+    names = filternames(grid)
+    idx = [something(findfirst(==(Symbol(f)), names), 0) for f in filters]
+    bad = [f for (f, i) in zip(filters, idx) if i == 0]
+    isempty(bad) || throw(ArgumentError("Filters $(join(bad, ", ")) not found in $grid; available filters are $(join(names, ", "))."))
+    @argcheck !isempty(idx) && allunique(idx) "`filters` must be nonempty and must not repeat a filter."
+    return idx
+end
 
 #################################
 # Bolometric correction table API
@@ -495,7 +520,7 @@ surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 100000000
 
 #################################
 # Top-level API exports
-export Table, columnnames, columns, getproperties, gridname, filternames, Av_nodes, zeropoints, vegamags,
+export Table, columnnames, columns, getproperties, gridname, filternames, select_filters, Av_nodes, zeropoints, vegamags,
     stmags, abmags, Mbol, Lbol, X, X_phot, Y_p, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry
 
 # Include submodules

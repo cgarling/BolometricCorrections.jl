@@ -33,6 +33,15 @@ const zpt = BolometricCorrections.MIST.zpt # Constant instance of BolometricCorr
     t4, t6 = grid(-1.01, 0.4), grid(-1.01, 0.6)
     @test grid(-1.01, 0.55)(5000.0, 4.0) ≈ t4(5000.0, 4.0) .+ 0.75 .* (t6(5000.0, 4.0) .- t4(5000.0, 4.0))
 
+    # Grids with a subset of the filters give the same BCs for those filters, in the order given
+    sub = select_filters(grid, ("F200W", :F090W))
+    @test sub isa MISTv1BCGrid
+    @test filternames(sub) == filternames(sub(-1.01, 0.43)) == (:F200W, :F090W)
+    i = [findfirst(==(f), filternames(grid)) for f in (:F200W, :F090W)]
+    @test sub(-1.01, 0.43)([3000.0, 5000.0], [1.0, 4.0]) == grid(-1.01, 0.43)([3000.0, 5000.0], [1.0, 4.0])[i, :]
+    @test_throws "not found" select_filters(grid, ("F200W", "F999W"))
+    @test_throws ArgumentError select_filters(grid, ("F200W", "F200W"))
+
     for feh in range(extrema(BolometricCorrections.MIST.gridinfov1.feh)...; step=0.1)
         for Av in range(extrema(BolometricCorrections.MIST.gridinfov1.Av)...; step=0.1)
             table = grid(feh, Av)
@@ -56,6 +65,12 @@ end
     @test Av_nodes(grid) == Av_nodes(MISTv2BCGrid) == collect(BolometricCorrections.MIST.gridinfov2.Av)
     t4, t6 = grid(-1.01, 0.0, 0.4), grid(-1.01, 0.0, 0.6)
     @test grid(-1.01, 0.0, 0.55)(5000.0, 4.0) ≈ t4(5000.0, 4.0) .+ 0.75 .* (t6(5000.0, 4.0) .- t4(5000.0, 4.0))
+
+    fs = filternames(grid)[[3, 1]]
+    sub = select_filters(grid, fs)
+    @test sub isa MISTv2BCGrid
+    @test filternames(sub) == filternames(sub(-1.01, 0.2, 0.43)) == fs
+    @test sub(-1.01, 0.2, 0.43)([3000.0, 5000.0], [1.0, 4.0]) == grid(-1.01, 0.2, 0.43)([3000.0, 5000.0], [1.0, 4.0])[[3, 1], :]
 
     for feh in range(extrema(BolometricCorrections.MIST.gridinfov2.feh)...; step=0.1)
         for Av in range(extrema(BolometricCorrections.MIST.gridinfov2.Av)...; step=0.1)
