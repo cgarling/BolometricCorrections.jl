@@ -13,6 +13,7 @@ BolometricCorrections.surface_gravity
 BolometricCorrections.AbstractBCGrid
 gridname(::BolometricCorrections.AbstractBCGrid)
 filternames(::BolometricCorrections.AbstractBCGrid)
+select_filters
 extrema(::BolometricCorrections.AbstractBCGrid)
 Av_nodes(::BolometricCorrections.AbstractBCGrid)
 Table(::BolometricCorrections.AbstractBCGrid)

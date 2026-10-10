@@ -10,8 +10,8 @@ using Interpolations: cubic_spline_interpolation, Throw, Flat
 using StaticArrays: SVector
 
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Av_nodes, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
+using ...BolometricCorrections: repack_submatrix, _filter_indices, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, AbstractChemicalMixture
+import ...BolometricCorrections: zeropoints, filternames, select_filters, gridname, chemistry, Av_nodes, Y_p, X, X_phot, Y, Y_phot, Z, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames
 
 export ATLAS9YBCTable, ATLAS9YBCGrid, ATLAS9Chemistry
@@ -133,6 +133,10 @@ Base.extrema(::Type{<:ATLAS9YBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff)),
                                          Av = (first(gridinfo.Av), last(gridinfo.Av)),
                                          Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::ATLAS9YBCGrid) = grid.filters
+function select_filters(grid::ATLAS9YBCGrid, filters)
+    idx = _filter_indices(grid, filters)
+    return ATLAS9YBCGrid(map(d -> d[:, idx], grid.data), grid.mag_zpt[idx], grid.systems[idx], grid.name, grid.filters[idx])
+end
 gridname(::Type{<:ATLAS9YBCGrid}) = "YBC-ATLAS9"
 Av_nodes(::Type{<:ATLAS9YBCGrid}) = collect(Float64, gridinfo.Av)
 # zeropoints(::ATLAS9YBCGrid) = zpt

@@ -12,8 +12,8 @@ using StaticArrays: SVector
 using TypedTables: Table
 
 
-using ...BolometricCorrections: repack_submatrix, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, AbstractMassLoss
-import ...BolometricCorrections: zeropoints, filternames, gridname, chemistry, Av_nodes, Z, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
+using ...BolometricCorrections: repack_submatrix, _filter_indices, AbstractBCTable, AbstractBCGrid, interp1d, interp2d, _parse_teff, _parse_logg, _parse_Mdot, AbstractMassLoss
+import ...BolometricCorrections: zeropoints, filternames, select_filters, gridname, chemistry, Av_nodes, Z, MH, FeH, alphaFe, alpha_mass_fraction # vegamags, abmags, stmags, Mbol, Lbol
 using ..YBC: dtype, pull_table, parse_filterinfo, check_prefix, check_vals, filter_fits_colnames, PARSECChemistry
 
 # export ...
@@ -182,6 +182,10 @@ Base.extrema(::Type{<:WMbasicYBCGrid}) = (Teff = (exp10(first(gridinfo.logTeff))
                                           Mdot = (first(gridinfo.Mdot), last(gridinfo.Mdot)),
                                           Rv = (first(gridinfo.Rv), last(gridinfo.Rv)))
 filternames(grid::WMbasicYBCGrid) = grid.filters
+function select_filters(grid::WMbasicYBCGrid, filters)
+    idx = _filter_indices(grid, filters)
+    return WMbasicYBCGrid(map(d -> d[:, idx], grid.data), grid.mag_zpt[idx], grid.systems[idx], grid.name, grid.filters[idx])
+end
 gridname(::Type{<:WMbasicYBCGrid}) = "YBC-WMbasic"
 Av_nodes(::Type{<:WMbasicYBCGrid}) = collect(Float64, gridinfo.Av)
 # zeropoints(::WMbasicYBCGrid) = zpt

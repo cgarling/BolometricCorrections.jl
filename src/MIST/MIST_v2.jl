@@ -189,6 +189,8 @@ Base.extrema(::Type{<:MISTv2BCGrid}) =
      Av    = (first(gridinfov2.Av),    last(gridinfov2.Av)),
      Rv    = (first(gridinfov2.Rv),    last(gridinfov2.Rv)))
 filternames(grid::MISTv2BCGrid) = columnnames(grid)[length(_mist_v2_dependents)+1:end]
+select_filters(grid::MISTv2BCGrid, filters) =
+    MISTv2BCGrid(getproperties(Table(grid), (_mist_v2_dependents..., filternames(grid)[_filter_indices(grid, filters)]...)), grid.filename)
 gridname(::Type{<:MISTv2BCGrid}) = "MISTv2"
 Av_nodes(::Type{<:MISTv2BCGrid}) = collect(Float64, _mist_v2_Av)
 zeropoints(::MISTv2BCGrid) = zpt
